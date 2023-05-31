@@ -62,7 +62,6 @@ def plot_VA(vals, count_v, aros, count_a, path=os.getcwd()):
     plt.xticks(vals+1, fontsize=10)
     plt.legend()
     plt.grid(axis='y')
-    # plt.show()
     plt.savefig(path, dpi=200)
 
 
@@ -154,25 +153,27 @@ def plot_confusion_matrix(labels, preds, label_name, path, lbname, title):
     plt.savefig(os.path.join(path, 'CM.png'), dpi=200)
 
 # ROC curve
-def print_auroc(true, pred, percent=0.95, dpi=150):
-    fpr,tpr,thresholds = roc_curve(true, pred, pos_label=1)
-    print("AUROC:", auc(fpr,tpr))
+def print_auroc(true, pred, percent=0.95, path=os.getcwd()):
+    fpr, tpr, thresholds = roc_curve(true, pred, pos_label=1)
+    log = f"AUROC: {auc(fpr, tpr)}\n"
     return_threshold = 0.
     for idx, i in enumerate(tpr):
         if i >= percent:
-            print(idx)
-            print(f'FPR at TPR {percent}: {fpr[idx]}')
-            print(f'Threshold at TPR {percent}: {thresholds[idx]}')
+            # print(idx)
+            log += f'FPR at TPR {percent}: {fpr[idx]}\n'
+            log += f'Threshold at TPR {percent}: {thresholds[idx]}\n'
             return_threshold = thresholds[idx]
+            # print(return_threshold)
             break
     # Plot the ROC curve
-    plt.figure(dpi=dpi)
+    plt.figure(figsize=(7, 7))
     plt.plot(fpr, tpr)
     plt.title('ROC Curve')
     plt.xlabel('False Positive Rate')
     plt.ylabel('True Positive Rate')
-    plt.show()
-    return return_threshold
+    plt.tight_layout()
+    plt.savefig(os.path.join(path, 'ROC_curve.png'), dpi=200)
+    return log
 
 # Precision-Recall curve
 def print_pr(true, pred, dpi=150):

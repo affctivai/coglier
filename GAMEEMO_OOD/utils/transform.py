@@ -35,6 +35,22 @@ class BandDifferentialEntropy:
         return 1 / 2 * np.log2(2 * np.pi * np.e * np.std(eeg))
 
 # 3D-> 4D-----------------------------------------------------------------------------------------
+def make_grid(datas):
+    CHLS = ['AF3', 'AF4', 'F3', 'F4', 'F7', 'F8', 'FC5', 'FC6', 'O1', 'O2', 'P7', 'P8', 'T7', 'T8']  # 14 channels
+    LOCATION = [['-', '-', '-', '-', '-', '-', '-', '-', '-'],
+                ['-', '-', '-', 'AF3', '-', 'AF4', '-', '-', '-'],
+                ['F7', '-', 'F3', '-', '-', '-', 'F4', '-', 'F8'],
+                ['-', 'FC5', '-', '-', '-', '-', '-', 'FC6', '-'],
+                ['T7', '-', '-', '-', '-', '-', '-', '-', 'T8'],
+                ['-', '-', '-', '-', '-', '-', '-', '-', '-'],
+                ['P7', '-', '-', '-', '-', '-', '-', '-', 'P8'],
+                ['-', '-', '-', '-', '-', '-', '-', '-', '-'],
+                ['-', '-', '-', 'O1', '-', 'O2', '-', '-', '-']]
+
+    CHANNEL_LOCATION_DICT = format_channel_location_dict(CHLS, LOCATION)
+    togrid = ToGrid(CHANNEL_LOCATION_DICT)
+    return np.array([togrid.apply(sample) for sample in datas])
+
 def format_channel_location_dict(channel_list, location_list):
     location_list = np.array(location_list)
     output = {}
@@ -76,4 +92,5 @@ class ToGrid:
         for i, (x, y) in enumerate(self.channel_location_dict.values()):
             outputs[i] = eeg[x][y]
         # num_electrodes x timestep
-        return outputs 
+        return outputs
+
