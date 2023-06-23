@@ -35,13 +35,14 @@ def get_folder(path):
     return path
 
 #-----------------------------------------------------------------------------------------
-DATAS = join(os.getcwd(),"deap_data", 'DEAP_npz')
+DATAS = join(os.getcwd(),"SEED_IV", 'SEED_npz')
 DATA = join(DATAS, 'baseline')
-LABEL = 'v' # 4, v, a
+LABEL = '4' # 4, v, a
 DNAME = 'seg_DE'
 NAME = f'{DNAME}_{LABEL}'
 if LABEL == 'a': train_name = 'arousal'
 elif LABEL == 'v': train_name = 'valence'
+else: train_name = 'emotion'
 train_path = Path(join(os.getcwd(), 'results', 'baseline', train_name)) # save result in train_path
 train_path = get_folder(train_path)
 train_path.mkdir(parents=True, exist_ok=True)
@@ -61,8 +62,8 @@ model = MyCCNN(in_channels=trainset.x.shape[1], num_classes=len(labels_name))
 model = model.to(device)
 # print(summary(model, trainset.x.shape[1:]))
 
-EPOCH = 100
-BATCH = 64
+EPOCH = 50
+BATCH = 128
 
 trainloader = DataLoader(trainset, batch_size=BATCH, shuffle=True)
 validloader = DataLoader(validset, batch_size=BATCH, shuffle=False)
