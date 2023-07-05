@@ -22,6 +22,8 @@ def seed_everything(seed):
     os.environ["PYTHONHASHSEED"] = str(seed)
     torch.manual_seed(seed)
     torch.cuda.manual_seed(seed)
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
 random_seed = 42
 seed_everything(random_seed)
 
@@ -40,8 +42,9 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--subID', type=str, default = '01')
 parser.add_argument('--epoch', type=int, default = 3)
 parser.add_argument('--batch', type=int, default = 64)
-parser.add_argument('--target', type=str, default = 'a') # 4, v, a
-parser.add_argument('--project_name', type=str, default = 'Subdepen_project')  # save result
+parser.add_argument('--target', type=str, default = 'v') # 4, v, a
+parser.add_argument('--project_name', type=str, default = 'subdepend')  # save result
+parser.add_argument('--dname', type=str, default = 'seg_DE')  # save result
 args = parser.parse_args()
 
 SUB   = args.subID
@@ -49,12 +52,11 @@ EPOCH = args.epoch
 BATCH = args.batch
 LABEL = args.target
 projcet_name = args.project_name
+DNAME = args.dname
 
-DATAS = join("C:\\", "Users", "LAPTOP", "jupydir", "DATAS", 'GAMEEMO_npz')
-DATA = join(DATAS, 'SubDepen', SUB)
-DNAME = 'seg_DE'
+DATAS = join("C:\\", "Users", "LAPTOP", "jupydir", "DATAS", 'GAMEEMO_npz', 'Projects')
+DATA = join(DATAS, projcet_name, SUB)
 NAME = f'{DNAME}_{LABEL}'
-
 if LABEL == 'a': train_name = 'arousal'
 elif LABEL == 'v': train_name = 'valence'
 
@@ -118,8 +120,8 @@ def evaluate(model, loader, criterion, device):
 criterion = nn.CrossEntropyLoss()
 criterion = criterion.to(device)
 
-optimizer = optim.Adam(model.parameters(), lr=0)
-scheduler = lr_scheduler.CosineAnnealingWarmUpRestarts(optimizer,T_0=STEPS,T_mult=1,eta_max=0.0001,T_up=STEP*3,gamma=0.5)
+optimizer = optim.Adam(model.parameters(), lr=0, weight_decay=1e-4)
+scheduler = lr_scheduler.CosineAnnealingWarmUpRestarts(optimizer,T_0=STEPS,T_mult=1,eta_max=1e-4,T_up=STEP*3,gamma=0.5)
 
 lrs = []
 train_losses, train_accs = [],[]
@@ -152,7 +154,7 @@ with open(join(train_path, 'train.txt'), 'w') as file:
         file.write(log + '\n')
         print(log)
 
-plot_scheduler(lrs, save=True, path=train_path)
+# plot_scheduler(lrs, save=True, path=train_path)
 plot_train_result(train_losses, valid_losses, train_accs, valid_accs, EPOCH, size=(9, 5), path=train_path)
 print(f"model weights saved in '{join(train_path,'best.pt')}'")
 

@@ -1,7 +1,9 @@
 import numpy as np
 from scipy.signal import butter, lfilter
+from scipy.signal.windows import hann
 
-# BandDifferentialEntropy------------------------------------------------------------------------
+# EEG feature extraction--------------------------------------------------------------------------
+# BandDifferentialEntropy, BandPowerSpectralDensity
 def butter_bandpass(low_cut, high_cut, fs, order=5):
     nyq = 0.5 * fs
     low = low_cut / nyq
@@ -33,6 +35,35 @@ class BandDifferentialEntropy:
 
     def opt(self, eeg):
         return 1 / 2 * np.log2(2 * np.pi * np.e * np.std(eeg))
+
+class BandPowerSpectralDensity: # 양의 실수
+    def __init__(self, sampling_rate = 128,
+                 fft_n = None,
+                 band_dict = {"theta": [4, 8],
+                             "alpha": [8, 14],
+                             "beta": [14, 31],
+                             "gamma": [31, 49]}):
+
+        self.sampling_rate = sampling_rate
+        if fft_n is None:   fft_n = self.sampling_rate
+        self.fft_n = fft_n
+        self.band_dict = band_dict
+
+    def apply(self, eeg):
+        band_list = []
+
+        hdata = eeg * hann(eeg.shape[1])
+        fft_data = np.fft.fft(hdata, n=self.fft_n)
+        energy_graph = np.abs(fft_data[:, 0 : int(self.fft_n / 2)])
+
+        for _, band in enumerate(self.band_dict.values()):
+            start_index = int(np.floor(band[0] / self.sampling_rate * self.fft_n))
+            end_index = int(np.floor(band[1] / self.sampling_rate * self.fft_n))
+            band_ave_psd = np.mean(energy_graph[:, start_index -1 : end_index]**2, axis=1) # 주파수내 평균전력
+            band_list.append(band_ave_psd)
+
+        return np.stack(band_list, axis=-1)
+
 
 # 3D-> 4D-----------------------------------------------------------------------------------------
 def make_grid(datas):
@@ -93,4 +124,3 @@ class ToGrid:
             outputs[i] = eeg[x][y]
         # num_electrodes x timestep
         return outputs
-
