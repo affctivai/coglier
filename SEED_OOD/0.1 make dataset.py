@@ -76,7 +76,7 @@ def make_dataset_SD(src, sublists, label, save_folder):
 
 # High Low dataset
 def make_dataset_HL(src, ranks, cut, label, save_folder):
-    ranks = [str(sub) for sub in ranks]
+    ranks = [str(sub).zfill(2) for sub in ranks]
     # cut = int(28 * cut_rate)
     higs = ranks[: cut]
     lows = ranks[cut :]
@@ -142,14 +142,14 @@ togrid = ToGrid(CHANNEL_LOCATION_DICT)
 
 # ---------------------------------------save data------------------------------------------------
 # Sub Independent
-make_dataset_SI(DATA, SUBLIST, LABEL, join(DATAS, 'baseline'))
+# make_dataset_SI(DATA, SUBLIST, LABEL, join(DATAS, 'baseline'))
 
 # Sub dependent
-make_dataset_SD(DATA, SUBLIST, LABEL, join(DATAS, 'SubDepen'))
+# make_dataset_SD(DATA, SUBLIST, LABEL, join(DATAS, 'SubDepen'))
 
 # After 0.2 subdepend.py
 folder_name = 'Highs'
 
 ## subdepend results
-# RANKS = [15,13,14,4,2,6,3,7,9,8,1,10,5,12,11]
-# make_dataset_HL(DATA, RANKS, cut=15-3, label='4', save_folder=join(DATAS, folder_name))
+RANKS = [15,5,13,8,9,12,6,7,11,3,10,14,1,4,2]
+make_dataset_HL(DATA, RANKS, cut=15-3, label='4', save_folder=join(DATAS, folder_name))
