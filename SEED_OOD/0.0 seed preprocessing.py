@@ -75,8 +75,9 @@ def save_datas_seg_DE(window, stride, data_dir, saved_dir):
         sub_num = int(dir_name.split('_')[0])
         sub_dir_list[sub_num].append(dir_name)
 
-    sub_list = [i for i in range(1,16)]
-    
+    # sub_list = [i for i in range(1,16)]
+    sub_list = [14, 15]
+
     for subidx in sub_list:
         x, y = [], []
 
