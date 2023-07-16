@@ -13,7 +13,7 @@ import torch.optim.lr_scheduler as lr_scheduler
 import torch.nn as nn
 
 from utils.scheduler import CosineAnnealingWarmUpRestarts
-from utils.dataset import GameemoDataset
+from utils.dataset import PreprocessedDataset
 from utils.model import MyCCNN, TSCeption, EEGNet
 from utils.tools import MyScheduler, plot_scheduler, epoch_time, plot_train_result
 from utils.tools import plot_confusion_matrix, get_roc_auc_score
@@ -88,8 +88,8 @@ def run_train():
     train_path.mkdir(parents=True, exist_ok=True)
 
     # Load train, valid
-    trainset = GameemoDataset(DATA, NAME, 'train')
-    validset = GameemoDataset(DATA, NAME, 'valid')
+    trainset = PreprocessedDataset(DATA, NAME, 'train')
+    validset = PreprocessedDataset(DATA, NAME, 'valid')
     print(f'trainset: {trainset.x.shape} \t validset: {validset.x.shape}')
 
     labels_name = np.unique(validset.y) + 1
@@ -204,7 +204,7 @@ def run_test():
     test_path.mkdir(parents=True, exist_ok=True)
 
     # Load test
-    testset = GameemoDataset(DATA, NAME, 'test')
+    testset = PreprocessedDataset(DATA, NAME, 'test')
     print(f'testset: {testset.x.shape}')
 
     labels_name = np.unique(testset.y) + 1

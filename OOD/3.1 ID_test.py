@@ -10,7 +10,7 @@ from torch.utils.data import DataLoader
 import torch.nn as nn
 import torch.nn.functional as F
 
-from utils.dataset import GameemoDataset
+from utils.dataset import PreprocessedDataset
 from utils.model import MyCCNN
 from utils.tools import plot_confusion_matrix, get_roc_auc_score
 from sklearn.metrics import classification_report
@@ -70,7 +70,7 @@ test_path = get_folder(test_path)
 test_path.mkdir(parents=True, exist_ok=True)
 
 # Load test
-testset = GameemoDataset(DATA, NAME, 'test')
+testset = PreprocessedDataset(DATA, NAME, 'test')
 print(f'testset: {testset.x.shape}')
 
 labels_name = np.unique(testset.y) + 1

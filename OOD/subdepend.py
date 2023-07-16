@@ -13,7 +13,7 @@ import torch.optim.lr_scheduler as lr_scheduler
 import torch.nn as nn
 
 from utils.scheduler import CosineAnnealingWarmUpRestarts
-from utils.dataset import GameemoDataset_
+from utils.dataset import PreprocessedDataset_
 from utils.model import MyCCNN, TSCeption, EEGNet
 from utils.tools import MyScheduler, plot_scheduler, epoch_time, plot_train_result
 from torch.optim.lr_scheduler import _LRScheduler
@@ -90,8 +90,8 @@ train_path = Path(join(os.getcwd(), 'results', DATASET_NAME, project_name, SUB, 
 train_path.mkdir(parents=True, exist_ok=True)
 
 # Load train, valid
-trainset = GameemoDataset_(DATA, NAME, 'train')
-validset = GameemoDataset_(DATA, NAME, 'valid')
+trainset = PreprocessedDataset_(DATA, NAME, 'train')
+validset = PreprocessedDataset_(DATA, NAME, 'valid')
 print(f'trainset: {trainset.x.shape} \t validset: {validset.x.shape}')
 
 labels_name = validset.label.tolist()
@@ -191,7 +191,7 @@ from sklearn.metrics import classification_report
 
 model.load_state_dict(torch.load(join(train_path, 'best.pt')))
 
-testset = GameemoDataset_(DATA, NAME, 'test')
+testset = PreprocessedDataset_(DATA, NAME, 'test')
 print(f'testset: {testset.x.shape}')
 testloader = DataLoader(testset, batch_size=BATCH, shuffle=False)
 

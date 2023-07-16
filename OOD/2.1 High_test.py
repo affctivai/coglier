@@ -10,7 +10,7 @@ from torch.utils.data import DataLoader
 import torch.nn as nn
 import torch.nn.functional as F
 
-from utils.dataset import GameemoDataset
+from utils.dataset import PreprocessedDataset
 from utils.model import MyCCNN
 from utils.tools import get_roc_auc_score, print_auroc
 
@@ -68,8 +68,8 @@ test_path = get_folder(test_path)
 test_path.mkdir(parents=True, exist_ok=True)
 
 # Load test, Lows
-testset = GameemoDataset(DATA, NAME, 'test')
-lowsset = GameemoDataset(DATA, NAME, 'lows')
+testset = PreprocessedDataset(DATA, NAME, 'test')
+lowsset = PreprocessedDataset(DATA, NAME, 'lows')
 print(f'testset: {testset.x.shape}, lowsset: {lowsset.x.shape}')
 
 labels_name = np.unique(testset.y) + 1
