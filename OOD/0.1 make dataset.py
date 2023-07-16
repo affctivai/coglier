@@ -182,17 +182,21 @@ SUBLIST = [str(i).zfill(2) for i in range(1, SUB_NUM+1)] # '01', '02', '03', ...
 # ---------------------------------------save data------------------------------------------------
 # Sub Independent----------------
 # CCNN
-make_dataset_SI(join(DATAS,'Preprocessed','seg_DE'),SUBLIST,LABEL,None,'grid', join(DATAS, 'Projects', 'baseline_de'))
+# make_dataset_SI(join(DATAS,'Preprocessed','seg_DE'),SUBLIST,LABEL,None,'grid', join(DATAS, 'Projects', 'baseline_de'))
 # make_dataset_SI(join(DATAS,'Preprocessed','seg_PSD'),SUBLIST,LABEL,'log','grid', join(DATAS, 'Projects', 'baseline_psd'))
 
 # TSCeption
 # make_dataset_SI(join(DATAS,'Preprocessed','seg'),SUBLIST,LABEL,'standard','expand', join(DATAS, 'Projects', 'baseline_TSC'))
+
+# EEGNet
+make_dataset_SI(join(DATAS,'Preprocessed','seg'),SUBLIST,LABEL,'standard','expand', join(DATAS, 'Projects', 'baseline_EEGNet'))
 
 # Sub dependent-----------------
 # make_dataset_SD(join(DATAS, 'Preprocessed', 'seg_DE'), SUBLIST, LABEL,None,'grid', join(DATAS, 'Projects', 'subdepend_de'))
 # make_dataset_SD(join(DATAS, 'Preprocessed', 'seg_PSD'), SUBLIST, LABEL, join(DATAS, 'Projects', 'subdepend_psd'))
 
 # make_dataset_SD(join(DATAS,'Preprocessed','seg'),SUBLIST,LABEL,'standard','expand', join(DATAS, 'Projects', 'subdepend_TSC'))
+make_dataset_SD(join(DATAS,'Preprocessed','seg'),SUBLIST,LABEL,'standard','expand', join(DATAS, 'Projects', 'subdepend_EEGNet'))
 
 # # After 0.2 subdepend.py
 # folder_name = 'Highs'

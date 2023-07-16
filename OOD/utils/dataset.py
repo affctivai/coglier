@@ -3,7 +3,7 @@ import numpy as np
 import torch
 from torch.utils.data import Dataset
 
-class GameemoDataset(Dataset):
+class PreprocessedDataset(Dataset):
     def __init__(self, src, names, mode):
         self.src = src
         self.names = names
@@ -24,7 +24,7 @@ class GameemoDataset(Dataset):
         return self.y.shape[0]
 
 # for subject dependent
-class GameemoDataset_(Dataset):
+class PreprocessedDataset_(Dataset):
     def __init__(self, src, names, mode):
         self.src = src
         self.names = names

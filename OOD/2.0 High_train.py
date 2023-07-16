@@ -11,7 +11,7 @@ import torch.optim as optim
 import torch.optim.lr_scheduler as lr_scheduler
 import torch.nn as nn
 
-from utils.dataset import DeapDataset
+from utils.dataset import PreprocessedDataset
 from utils.model import MyCCNN
 from utils.tools import MyScheduler, plot_scheduler, epoch_time, plot_train_result
 from utils.scheduler import CosineAnnealingWarmUpRestarts
@@ -81,8 +81,8 @@ train_path = get_folder(train_path)
 train_path.mkdir(parents=True, exist_ok=True)
 
 # Load train, valid
-trainset = DeapDataset(DATA, NAME, 'train')
-validset = DeapDataset(DATA, NAME, 'valid')
+trainset = PreprocessedDataset(DATA, NAME, 'train')
+validset = PreprocessedDataset(DATA, NAME, 'valid')
 print(f'trainset: {trainset.x.shape} \t validset: {validset.x.shape}')
 
 labels_name = np.unique(validset.y) + 1

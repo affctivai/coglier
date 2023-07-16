@@ -50,6 +50,7 @@ def save_results(sublist):
     df.to_excel(join(projcet_path, f'{train_name}_results.xlsx'))
 
 project_name = 'Subdepend_de'
+# project_name = 'Subdepend_EEGNet'
 # project_name = 'Subdepend_TSC'
 projcet_path = join(os.getcwd(), 'results', DATASET_NAME, project_name)
 
