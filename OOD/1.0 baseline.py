@@ -14,7 +14,7 @@ import torch.nn as nn
 
 from utils.scheduler import CosineAnnealingWarmUpRestarts
 from utils.dataset import GameemoDataset
-from utils.model import MyCCNN, TSCeption
+from utils.model import MyCCNN, TSCeption, EEGNet
 from utils.tools import MyScheduler, plot_scheduler, epoch_time, plot_train_result
 from utils.tools import plot_confusion_matrix, get_roc_auc_score
 from sklearn.metrics import classification_report
@@ -59,7 +59,7 @@ def get_folder(path):
 DATASET_NAME = "SEED_IV"
 DATAS = join(os.getcwd(),"datasets", DATASET_NAME, "npz", "Projects")
 LABEL = '4' # 4, v, a
-EPOCH = 1
+EPOCH = 100
 BATCH = 128
 
 # ---- SEED
@@ -69,7 +69,8 @@ BATCH = 128
 # EPOCH = 1
 # BATCH = 128
 
-project_name = 'baseline_TSC'
+# project_name = 'baseline_TSC'
+project_name = 'baseline_EEGNet'
 # project_name = 'baseline_de'
 
 DATA = join(DATAS, project_name)
@@ -96,7 +97,8 @@ def run_train():
 
     # Model
     # model = MyCCNN(in_channels=trainset.x.shape[1], num_classes=len(labels_name))
-    model = TSCeption(num_electrodes=trainset.x.shape[2], num_classes=len(labels_name))
+    # model = TSCeption(num_electrodes=trainset.x.shape[2], num_classes=len(labels_name))
+    model = EEGNet(num_electrodes=trainset.x.shape[2], num_classes=len(labels_name), chunk_size=256)
 
     model = model.to(device)
     print(summary(model, trainset.x.shape[1:]))
@@ -210,7 +212,8 @@ def run_test():
 
     # Model (load parameters)
     # model = MyCCNN(in_channels=testset.x.shape[1], num_classes=len(labels_name))
-    model = TSCeption(num_electrodes=testset.x.shape[2], num_classes=len(labels_name))
+    # model = TSCeption(num_electrodes=testset.x.shape[2], num_classes=len(labels_name))
+    model = EEGNet(num_electrodes=testset.x.shape[2], num_classes=len(labels_name))
 
     model = model.to(device)
     model.load_state_dict(torch.load(join(train_path, 'best.pt')))

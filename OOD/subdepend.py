@@ -14,7 +14,7 @@ import torch.nn as nn
 
 from utils.scheduler import CosineAnnealingWarmUpRestarts
 from utils.dataset import GameemoDataset_
-from utils.model import MyCCNN
+from utils.model import MyCCNN, TSCeption, EEGNet
 from utils.tools import MyScheduler, plot_scheduler, epoch_time, plot_train_result
 from torch.optim.lr_scheduler import _LRScheduler
 import math
@@ -73,10 +73,12 @@ DATAS = join(os.getcwd(),"datasets", DATASET_NAME, "npz", "Projects")
 
 
 project_name = 'subdepend_de'
+# projcet_name = 'subdepend_EEGNet'
 # project_name = 'subdepend_TSC'
 
 DATA = join(DATAS, project_name, SUB)
 DNAME = 'seg_DE'
+
 NAME = f'{DNAME}_{LABEL}'
 
 if LABEL == 'a': train_name = 'arousal'
@@ -97,6 +99,8 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 # Model
 model = MyCCNN(in_channels=trainset.x.shape[1], num_classes=len(labels_name))
+# model = TSCeption(num_electrodes=trainset.x.shape[2], num_classes=len(labels_name))
+# model = EEGNet(num_electrodes=trainset.x.shape[2], num_classes=len(labels_name), chunk_size=256)
 model = model.to(device)
 # print(summary(model, trainset.x.shape[1:]))
 

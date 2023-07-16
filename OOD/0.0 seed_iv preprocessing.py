@@ -12,6 +12,46 @@ session_label = [
     [-1,1,2,2,1,3,3,3,1,1,2,1,0,2,3,3,0,2,3,0,0,2,0,1,0]
 ]
 
+# No segmentation x: (4, 62, *), y: (4,)
+def save_datas_noseg(data_dir, saved_dir):
+    print('Segmentation x: (samples, 62, segment size), y: (samples, 2)')
+
+    dir_list = []
+    for i in range(1,4):
+        path = join(data_dir, str(i))
+        tmp = os.listdir(path)
+        dir_list.append(tmp)
+    subnums = []
+    for data in dir_list[0]:
+        subnums.append(int(data.split('_')[0]))
+
+    for subidx in range(0,15):
+        print('sub ID:',subnums[subidx], end=' ')
+        x, y = [], []
+
+        for session in range(1,4):
+            path = join(data_dir, str(session), dir_list[session-1][subidx])
+            datas = io.loadmat(path)
+            trial_name_ids = [(trial_name, int(re.findall(r".*_eeg(\d+)", trial_name)[0]))
+                for trial_name in datas.keys() if 'eeg' in trial_name]
+            for trial_name, trial_id in trial_name_ids:
+                data = datas[trial_name]
+                time_size = len(data[0])
+                seg = data[:, :]
+                print(seg.shape)
+                AA
+                x.append(seg)
+                y.append([session_label[session-1][trial_id], subnums[subidx]]) # 데이터마다 subID
+        x = np.array(x, dtype='float16')
+        np.nan_to_num(x, copy=False)
+        y = np.array(y)
+        
+        print(f'EEG:{x.shape} label:{y.shape}')
+        # 저장 폴더에 subject 별로 npz 파일 생성됨
+        os.makedirs(saved_dir, exist_ok=True)
+        np.savez(join(saved_dir, str(subnums[subidx]).zfill(2)), x=x, y=y) 
+    print(f'saved in {saved_dir}')
+
 # segmentation x: (samples, 14, segment size), y: (samples, 2)  ## [label, subID]
 ## if window: 256, stride: 128 -> x: (15718, 62, 256), y: (15718, 2)
 def save_datas_seg(window, stride, data_dir, saved_dir):
@@ -115,7 +155,8 @@ STRIDE = 128
 saved_dir = join(DATAS, 'npz', "Preprocessed")
 
 # There are 2 methods
-save_datas_seg(WINDOW, STRIDE, DATA,join(saved_dir, 'seg'))
+save_datas_noseg(DATA, join(saved_dir, 'no_seg'))
+# save_datas_seg(WINDOW, STRIDE, DATA,join(saved_dir, 'seg'))
 ## DE calculation takes a time. be careful
 # save_datas_seg_DE(WINDOW, STRIDE, DATA, join(saved_dir, 'seg_DE'))
 
