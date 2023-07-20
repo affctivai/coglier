@@ -2,6 +2,7 @@ import os
 from os.path import join, split
 import random
 import numpy as np
+import argparse
 
 from utils.tools import getFromnpz, getFromnpz_
 from sklearn.preprocessing import StandardScaler, RobustScaler
@@ -12,33 +13,48 @@ from utils.constant import *
 # -----------------------------------------Setting---------------------------------------------------
 # After 0.0 preprocessing.py
 
-# ---- GAMEEMO
-DATAS = join("C:\\", "Users", "LAPTOP", "jupydir", "DATAS", 'GAMEEMO_npz')
-SUB_NUM = 28
-CHLS = GAMEEMO_CHLS
-LOCATION = GAMEEMO_LOCATION
-LABEL = 'a' # 4, v, a
+parser = argparse.ArgumentParser()
+parser.add_argument("--dataset", dest="dataset", action="store", default="GAMEEMO") # GAMEEMO, SEED, SEED_IV, DEAP
+parser.add_argument("--model", dest="model", action="store", default="GAMEEMO") # GAMEEMO, SEED, SEED_IV, DEAP
+parser.add_argument("--subdepend", dest="subdepend", action="store_true") # 넣으면 SD 없으면 SI
+parser.add_argument("--mode", dest="mode", action="store", default="make") # make, test, high
 
-# ---- DEAP
-# DATAS = join(os.getcwd(),"datasets", "DEAP", "npz")
-# SUB_NUM = 32
-# CHLS = DEAP_CHLS
-# LOCATION = DEAP_LOCATION
-# LABEL = 'v' # 4, v, a
+args = parser.parse_args()
 
-# ---- SEED_IV
-# DATAS = join(os.getcwd(),"datasets", "SEED_IV", "npz")
-# SUB_NUM = 15
-# CHLS = SEED_IV_CHLS
-# LOCATION = SEED_IV_LOCATION
-# LABEL = '4' # 4, v, a
+DATASET_NAME = args.dataset
+MODEL = args.model
+SUBDEPEND = args.subdepend
+MODE = args.mode
 
-# ---- SEED
-# DATAS = join(os.getcwd(),"datasets", "SEED", "npz")
-# SUB_NUM = 15
-# CHLS = SEED_CHLS
-# LOCATION = SEED_LOCATION
-# LABEL = '4' # 4, v, a
+
+if DATASET_NAME == 'GAMEEMO':
+    DATAS = join("C:\\", "Users", "LAPTOP", "jupydir", "DATAS", 'GAMEEMO_npz')
+    SUB_NUM = 28
+    CHLS = GAMEEMO_CHLS
+    LOCATION = GAMEEMO_LOCATION
+    LABEL = 'a' # 4, v, a
+elif DATASET_NAME == 'SEED':
+    DATAS = join(os.getcwd(),"datasets", "SEED", "npz")
+    SUB_NUM = 15
+    CHLS = SEED_CHLS
+    LOCATION = SEED_LOCATION
+    LABEL = '4' # 4, v, a
+elif DATASET_NAME == 'SEED_IV':
+    DATAS = join(os.getcwd(),"datasets", "SEED_IV", "npz")
+    SUB_NUM = 15
+    CHLS = SEED_IV_CHLS
+    LOCATION = SEED_IV_LOCATION
+    LABEL = '4' # 4, v, a
+elif DATASET_NAME == 'DEAP':
+    DATAS = join(os.getcwd(),"datasets", "DEAP", "npz")
+    SUB_NUM = 32
+    CHLS = DEAP_CHLS
+    LOCATION = DEAP_LOCATION
+    LABEL = 'v' # 4, v, a
+else:
+    print("Unknown Dataset")
+    exit(1)
+
 
 def seed(s):
     random.seed(s)
@@ -178,29 +194,29 @@ SUBLIST = [str(i).zfill(2) for i in range(1, SUB_NUM+1)] # '01', '02', '03', ...
 
 # Sub Independent----------------
 # CCNN
-# make_dataset_SI(join(DATAS,'Preprocessed','seg_DE'),SUBLIST,LABEL,None,'grid', join(DATAS, 'Projects', 'baseline_DE_grid'))
-# make_dataset_SI(join(DATAS,'Preprocessed','seg_PSD'),SUBLIST,LABEL,'log','grid', join(DATAS, 'Projects', 'baseline_PSD_grid'))
-
-# TSCeption, EEGNet
-# make_dataset_SI(join(DATAS,'Preprocessed','seg'),SUBLIST,LABEL,'standard','expand', join(DATAS, 'Projects', 'baseline_raw'))
-
-# DGCNN
-make_dataset_SI(join(DATAS,'Preprocessed','seg_DE'),SUBLIST,LABEL,None,None, join(DATAS, 'Projects', 'baseline_DE'))
-make_dataset_SI(join(DATAS,'Preprocessed','seg_PSD'),SUBLIST,LABEL,'log',None, join(DATAS, 'Projects', 'baseline_PSD'))
-
-# Sub dependent-----------------
-# CCNN
-# make_dataset_SD(join(DATAS,'Preprocessed','seg_DE'),SUBLIST,LABEL, None, 'grid', join(DATAS, 'Projects', 'subdepend_DE_grid'))
-# make_dataset_SD(join(DATAS,'Preprocessed','seg_PSD'),SUBLIST,LABEL, 'log', 'grid', join(DATAS, 'Projects', 'subdepend_PSD_grid'))
-
-# TSCeption, EEGNet
-# make_dataset_SD(join(DATAS,'Preprocessed','seg'),SUBLIST,LABEL,'standard','expand', join(DATAS, 'Projects', 'subdepend_raw'))
-
-# DGCNN
-make_dataset_SD(join(DATAS,'Preprocessed','seg_DE'),SUBLIST,LABEL,None,None, join(DATAS, 'Projects', 'subdepend_DE'))
-make_dataset_SD(join(DATAS,'Preprocessed','seg_PSD'),SUBLIST,LABEL,'log',None, join(DATAS, 'Projects', 'subdepend_PSD'))
+if MODE == 'make':
+    if not SUBDEPEND:
+        if MODEL == 'CCNN':
+            make_dataset_SI(join(DATAS,'Preprocessed','seg_DE'),SUBLIST,LABEL,None,'grid', join(DATAS, 'Projects', 'baseline_DE_grid'))
+            make_dataset_SI(join(DATAS,'Preprocessed','seg_PSD'),SUBLIST,LABEL,'log','grid', join(DATAS, 'Projects', 'baseline_PSD_grid'))
+        elif MODEL == 'TSC' or MODEL == 'EEGNet':
+            make_dataset_SI(join(DATAS,'Preprocessed','seg'),SUBLIST,LABEL,'standard','expand', join(DATAS, 'Projects', 'baseline_raw'))
+        elif MODEL == 'DGCNN':
+            make_dataset_SI(join(DATAS,'Preprocessed','seg_DE'),SUBLIST,LABEL,None,None, join(DATAS, 'Projects', 'baseline_DE'))
+            make_dataset_SI(join(DATAS,'Preprocessed','seg_PSD'),SUBLIST,LABEL,'log',None, join(DATAS, 'Projects', 'baseline_PSD'))
+    else: # SubDepend
+        if MODEL == 'CCNN':
+            make_dataset_SD(join(DATAS,'Preprocessed','seg_DE'),SUBLIST,LABEL, None, 'grid', join(DATAS, 'Projects', 'subdepend_DE_grid'))
+            make_dataset_SD(join(DATAS,'Preprocessed','seg_PSD'),SUBLIST,LABEL, 'log', 'grid', join(DATAS, 'Projects', 'subdepend_PSD_grid'))
+        elif MODEL == 'TSC' or MODEL == 'EEGNet':
+            make_dataset_SD(join(DATAS,'Preprocessed','seg'),SUBLIST,LABEL,'standard','expand', join(DATAS, 'Projects', 'subdepend_raw'))
+        elif MODEL == 'DGCNN':
+            make_dataset_SD(join(DATAS,'Preprocessed','seg_DE'),SUBLIST,LABEL,None,None, join(DATAS, 'Projects', 'subdepend_DE'))
+            make_dataset_SD(join(DATAS,'Preprocessed','seg_PSD'),SUBLIST,LABEL,'log',None, join(DATAS, 'Projects', 'subdepend_PSD'))
 
 # # After 0.2 subdepend.py--------------
+if MODE == 'high':
+    pass # 나중에 추가점
 # folder_name = 'Highs'
 # ## subdepend results
 # vRANKS = [4,18,24,9,10,1,3,12,8,20,17,6,11,5,7,13,27,23,2,16,19,15,22,21,25,26,28,14]
@@ -210,6 +226,9 @@ make_dataset_SD(join(DATAS,'Preprocessed','seg_PSD'),SUBLIST,LABEL,'log',None, j
 
 # -----------------------------------------check---------------------------------------------------
 # load train, valid, test
+
+if MODE == 'test':
+    pass
 # def getDataset(path, names, mode):
 #     path = join(path, f'{names}_{mode}.npz')
 #     data = np.load(path, allow_pickle=True)

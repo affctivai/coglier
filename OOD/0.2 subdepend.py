@@ -4,35 +4,55 @@ import pandas as pd
 import numpy as np
 import subprocess
 import sys
+import argparse
 
-# ---- GAMEEMO
-# DATASET_NAME = "GAMEEMO"
-# # LABEL = 'v' # 4, v, a
-# EPOCH = 200
-# BATCH = 64
-# SUBNUMS = 
+parser = argparse.ArgumentParser()
+parser.add_argument("--model", dest="model", action="store", default="CCNN") # CCNN, TSC, EEGNet, DGCNN
+parser.add_argument("--label", dest="label", action="store", default="v") # 4, v, a
+parser.add_argument("--batch", dest="batch", action="store", default="64") # 64, 128
+parser.add_argument("--feature", dest="feature", action="store", default="DE") # DE, PSD
+parser.add_argument("--dataset", dest="dataset", action="store", default="GAMEEMO") # GAMEEMO, SEED, SEED_IV, DEAP
+parser.add_argument("--epoch", dest="epoch", action="store", default="1") # 1, 50, 100
 
+args = parser.parse_args()
 
-# ---- DEAP
-# DATASET_NAME = "DEAP"
-# LABEL = 'v' # 4, v, a
-# EPOCH = 1
-# BATCH = 64
-# SUBNUMS = 32
+DATASET_NAME = args.dataset
+LABEL = args.label
+MODEL_NAME = args.model
+FEATURE = args.feature
+BATCH = int(args.batch)
+EPOCH = int(args.epoch)
 
-# ---- SEED_IV
-DATASET_NAME = "SEED_IV"
-LABEL = '4' # 4, v, a
-EPOCH = 1
-BATCH = 128
-SUBNUMS = 1
+if DATASET_NAME == 'GAMEEMO':
+    DATAS = join("C:\\", "Users", "LAPTOP", "jupydir", "DATAS", 'GAMEEMO_npz', 'Projects')
+    # LABEL = 'v'     # 4, v, a
+    # PROJECT = 'baseline'
+    # MODEL_NAME = 'DGCNN'    # 'CCNN', 'TSC', 'EEGNet', 'DGCNN'
+    # FEATURE = 'PSD'          # 'DE', 'PSD'
+    # BATCH = 64
+    # SUBNUMS = 
+elif DATASET_NAME == 'SEED':
+    DATAS = join(os.getcwd(),"datasets", DATASET_NAME, "npz", "Projects")
+    SUBNUMS = 15
+    # LABEL = '4' # 4, v, a
+    # EPOCH = 1
+    # BATCH = 128
+elif DATASET_NAME == 'SEED_IV':
+    DATAS = join(os.getcwd(),"datasets", DATASET_NAME, "npz", "Projects")
+    SUBNUMS = 15
+    # LABEL = '4' # 4, v, a
+    # EPOCH = 100
+    # BATCH = 128
+elif DATASET_NAME == 'DEAP':
+    DATAS = join(os.getcwd(),"datasets", DATASET_NAME, "npz", "Projects")
+    SUBNUMS = 32
+    # LABEL = 'v' # 4, v, a
+    # EPOCH = 1
+    # BATCH = 64
+else:
+    print("Unknown Dataset")
+    exit(1)
 
-# ---- SEED
-# DATASET_NAME = "SEED"
-# LABEL = '4' # 4, v, a
-# EPOCH = 1
-# BATCH = 128
-# SUBNUMS = 15
 
 def run(sublist):
     for sub in sublist:
