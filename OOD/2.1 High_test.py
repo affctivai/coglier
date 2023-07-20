@@ -4,6 +4,7 @@ import random
 from pathlib import Path
 import numpy as np
 import matplotlib.pyplot as plt
+import argparse
 
 import torch
 from torch.utils.data import DataLoader
@@ -32,30 +33,35 @@ def get_folder(path):
         path = Path(p)
     return path
 #-----------------------------------------------------------------------------------------
+parser = argparse.ArgumentParser()
+parser.add_argument("--model", dest="model", action="store", default="CCNN") # CCNN, TSC, EEGNet, DGCNN
+parser.add_argument("--label", dest="label", action="store", default="v") # 4, v, a
+parser.add_argument("--feature", dest="feature", action="store", default="DE") # DE, PSD
+parser.add_argument("--dataset", dest="dataset", action="store", default="GAMEEMO") # GAMEEMO, SEED, SEED_IV, DEAP
 
-# ---- GAMEEMO
-# DATASET_NAME = "GAMEEMO"
-# DATAS = join("C:\\", "Users", "LAPTOP", "jupydir", "DATAS", 'GAMEEMO_npz', 'Projects')
+args = parser.parse_args()
 
+DATASET_NAME = args.dataset
+LABEL = args.label
+MODEL_NAME = args.model
+FEATURE = args.feature
 
-# ---- DEAP
-# DATASET_NAME = "DEAP"
-# DATAS = join(os.getcwd(),"datasets", DATASET_NAME, "npz", "Projects")
-
-# ---- SEED_IV
-DATASET_NAME = "SEED_IV"
-DATAS = join(os.getcwd(),"datasets", DATASET_NAME, "npz", "Projects")
-
-# ---- SEED
-# DATASET_NAME = "SEED"
-# DATAS = join(os.getcwd(),"datasets", DATASET_NAME, "npz", "Projects")
+if DATASET_NAME == 'GAMEEMO':
+    DATAS = join("C:\\", "Users", "LAPTOP", "jupydir", "DATAS", 'GAMEEMO_npz', 'Projects')
+elif DATASET_NAME == 'SEED':
+    DATAS = join(os.getcwd(),"datasets", DATASET_NAME, "npz", "Projects")
+elif DATASET_NAME == 'SEED_IV':
+    DATAS = join(os.getcwd(),"datasets", DATASET_NAME, "npz", "Projects")
+elif DATASET_NAME == 'DEAP':
+    DATAS = join(os.getcwd(),"datasets", DATASET_NAME, "npz", "Projects")
+else:
+    print("Unknown Dataset")
+    exit(1)
 
 
 Project_name = 'Highs'
 DATA = join(DATAS, 'Highs')
-LABEL = '4'  # 4, v, a
 
-DNAME = 'seg_DE'
 NAME = f'{DNAME}_{LABEL}'
 
 if LABEL == 'a': train_name = 'arousal'

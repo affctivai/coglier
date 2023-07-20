@@ -4,6 +4,7 @@ import time
 import random
 from pathlib import Path
 import numpy as np
+import argparse
 
 import torch
 from torchsummary import summary
@@ -38,36 +39,51 @@ def get_folder(path):
         path = Path(p)
     return path
 
-#-----------------------------------------------------------------------------------------
-# ---- GAMEEMO
-DATASET_NAME = "GAMEEMO"
-DATAS = join("C:\\", "Users", "LAPTOP", "jupydir", "DATAS", 'GAMEEMO_npz', 'Projects')
-LABEL = 'v'     # 4, v, a
+parser = argparse.ArgumentParser()
+parser.add_argument("--model", dest="model", action="store", default="CCNN") # CCNN, TSC, EEGNet, DGCNN
+parser.add_argument("--label", dest="label", action="store", default="v") # 4, v, a
+parser.add_argument("--batch", dest="batch", action="store", default="64") # 64, 128
+parser.add_argument("--feature", dest="feature", action="store", default="DE") # DE, PSD
+parser.add_argument("--dataset", dest="dataset", action="store", default="GAMEEMO") # GAMEEMO, SEED, SEED_IV, DEAP
+parser.add_argument("--epoch", dest="epoch", action="store", default="1") # 1, 50, 100
+
+args = parser.parse_args()
+
+DATASET_NAME = args.dataset
+LABEL = args.label
+MODEL_NAME = args.model
+FEATURE = args.feature
+BATCH = int(args.batch)
+EPOCH = int(args.epoch)
+
 PROJECT = 'baseline'
-MODEL_NAME = 'DGCNN'    # 'CCNN', 'TSC', 'EEGNet', 'DGCNN'
-FEATURE = 'PSD'          # 'DE', 'PSD'
-BATCH = 64
 
-# ---- DEAP
-# DATASET_NAME = "DEAP"
-# DATAS = join(os.getcwd(),"datasets", DATASET_NAME, "npz", "Projects")
-# LABEL = 'v' # 4, v, a
-# EPOCH = 1
-# BATCH = 64
+if DATASET_NAME == 'GAMEEMO':
+    DATAS = join("C:\\", "Users", "LAPTOP", "jupydir", "DATAS", 'GAMEEMO_npz', 'Projects')
+    # LABEL = 'v'     # 4, v, a
+    # PROJECT = 'baseline'
+    # MODEL_NAME = 'DGCNN'    # 'CCNN', 'TSC', 'EEGNet', 'DGCNN'
+    # FEATURE = 'PSD'          # 'DE', 'PSD'
+    # BATCH = 64
+elif DATASET_NAME == 'SEED':
+    DATAS = join(os.getcwd(),"datasets", DATASET_NAME, "npz", "Projects")
+    # LABEL = '4' # 4, v, a
+    # EPOCH = 1
+    # BATCH = 128
+elif DATASET_NAME == 'SEED_IV':
+    DATAS = join(os.getcwd(),"datasets", DATASET_NAME, "npz", "Projects")
+    # LABEL = '4' # 4, v, a
+    # EPOCH = 100
+    # BATCH = 128
+elif DATASET_NAME == 'DEAP':
+    DATAS = join(os.getcwd(),"datasets", DATASET_NAME, "npz", "Projects")
+    # LABEL = 'v' # 4, v, a
+    # EPOCH = 1
+    # BATCH = 64
+else:
+    print("Unknown Dataset")
+    exit(1)
 
-# ---- SEED_IV
-# DATASET_NAME = "SEED_IV"
-# DATAS = join(os.getcwd(),"datasets", DATASET_NAME, "npz", "Projects")
-# LABEL = '4' # 4, v, a
-# EPOCH = 100
-# BATCH = 128
-
-# ---- SEED
-# DATASET_NAME = "SEED"
-# DATAS = join(os.getcwd(),"datasets", DATASET_NAME, "npz", "Projects")
-# LABEL = '4' # 4, v, a
-# EPOCH = 1
-# BATCH = 128
 
 #-----------------------------------------------------------------------------------------
 def set_args(project, model_name, feature, label): # 0.1 make dataset과 호환맞춘다면 편의대로...
@@ -113,19 +129,19 @@ def run_train(model_name):
     if model_name == 'CCNN':
         model = CCNN(num_classes=len(labels_name))
         max_lr = 1e-4
-        EPOCH = 100
+        # EPOCH = 100
     elif model_name == 'TSC':
         model = TSCeption(num_electrodes=trainset.x.shape[2], num_classes=len(labels_name), sampling_rate=128, dropout=0)
         max_lr = 1e-3
-        EPOCH = 200
+        # EPOCH = 200
     elif model_name == 'EEGNet':
         model = EEGNet(chunk_size=trainset.x.shape[3], num_electrodes=trainset.x.shape[2], num_classes=len(labels_name), dropout=0)
         max_lr = 1e-3
-        EPOCH = 200
+        # EPOCH = 200
     elif model_name == 'DGCNN':
         model = DGCNN(in_channels=trainset.x.shape[2], num_electrodes=trainset.x.shape[1], num_classes=len(labels_name))
         max_lr = 1e-3
-        EPOCH = 200
+        # EPOCH = 200
 
     model = model.to(device)
     print(summary(model, trainset.x.shape[1:]))
