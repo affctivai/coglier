@@ -108,6 +108,56 @@ def save_datas_seg_DE(window, stride, data_dir, saved_dir):
         np.savez(join(saved_dir, str(subidx).zfill(2)), x=x, y=y) 
     print(f'saved in {saved_dir}')
 
+    
+from utils.transform import BandPowerSpectralDensity
+def save_datas_seg_PSD(window, stride, data_dir, saved_dir):
+    print('Segmentation with PSD x: (samples, 62, 4), y: (samples, 2)')
+
+    psd = BandPowerSpectralDensity()
+
+    labels = [-1, 1, 0, 2, 2, 0, 1, 2, 0, 1, 1, 0, 2, 0, 1, 2]
+
+    dir_list = os.listdir(data_dir)
+    skip_set = ['label.mat', 'readme.txt']
+    dir_list = [f for f in dir_list if f not in skip_set]
+
+    sub_dir_list = [[] for _ in range(0,16)]
+
+    for dir_name in dir_list:
+        sub_num = int(dir_name.split('_')[0])
+        sub_dir_list[sub_num].append(dir_name)
+
+    # sub_list = [i for i in range(1,16)]
+    sub_list = [14, 15]
+
+    for subidx in sub_list:
+        x, y = [], []
+
+        for session in range(0,3):
+            path = join(data_dir, sub_dir_list[subidx][session])
+            datas = io.loadmat(path)
+            
+            trial_name_ids = [(trial_name, int(re.findall(r".*_eeg(\d+)", trial_name)[0]))
+                for trial_name in datas.keys() if 'eeg' in trial_name]
+            
+            for trial_name, trial_id in trial_name_ids:
+                idx = 0
+                data = datas[trial_name]
+                time_size = len(data[0])
+                while idx + window < time_size:
+                    seg = data[:, idx : idx+window]
+                    x.append(psd.apply(seg))
+                    y.append([labels[trial_id], subidx]) # 데이터마다 subID
+                    idx += stride
+        x = np.array(x)
+        y = np.array(y)
+        
+        print(f'EEG:{x.shape} label:{y.shape}')
+        # 저장 폴더에 subject 별로 npz 파일 생성됨
+        os.makedirs(saved_dir, exist_ok=True)
+        np.savez(join(saved_dir, str(subidx).zfill(2)), x=x, y=y) 
+    print(f'saved in {saved_dir}')
+
 
 # -----------------------------------------main---------------------------------------------------
 # source data folder location
@@ -125,6 +175,7 @@ saved_dir = join(DATAS, 'npz', 'Preprocessed')
 save_datas_seg(WINDOW, STRIDE, DATA,join(saved_dir, 'seg'))
 ## DE calculation takes a time. be careful
 # save_datas_seg_DE(WINDOW, STRIDE, DATA, join(saved_dir, 'seg_DE'))
+# save_datas_seg_PSD(WINDOW, STRIDE, DATA, join(saved_dir, 'seg_PSD'))
 
 # -----------------------------------------check---------------------------------------------------
 # Save the bar graph of the number of labels per class
