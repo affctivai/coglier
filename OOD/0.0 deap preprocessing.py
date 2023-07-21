@@ -201,8 +201,9 @@ def save_datas_seg_PSD(window, stride, sublist, data_dir, saved_dir):
 
 # -----------------------------------------main---------------------------------------------------
 # source data folder location
-DATAS = join(os.getcwd(),"datasets", "DEAP")
-DATA = os.path.join(os.getcwd(),".." , "..","..", "..", "dataset", "DEAP", "data_preprocessed_matlab")
+DATAS = join("os.getcwd()","datasets", "DEAP")
+home = os.path.expanduser('~')
+DATA = os.path.join(home, "dataset", "DEAP", "data_preprocessed_matlab")
 
 WINDOW = 128 * 2
 STRIDE = 128
