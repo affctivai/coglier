@@ -188,7 +188,8 @@ def save_datas_seg_PSD(window, stride, data_dir, saved_dir):
 # -----------------------------------------main---------------------------------------------------
 # source data folder location
 DATAS = join(os.getcwd(), 'datasets', "SEED_IV")
-DATA = os.path.join(os.getcwd(),"..","..", "..","..", "dataset", "SEED_IV", "eeg_raw_data")
+home = os.path.expanduser('~')
+DATA = os.path.join(home, "dataset", "SEED_IV", "eeg_raw_data")
 
 WINDOW = 128 * 2
 STRIDE = 128
@@ -198,11 +199,11 @@ STRIDE = 128
 saved_dir = join(DATAS, 'npz', "Preprocessed")
 
 # There are 2 methods
-save_datas_noseg(DATA, join(saved_dir, 'no_seg'))
+# save_datas_noseg(DATA, join(saved_dir, 'no_seg'))
 # save_datas_seg(WINDOW, STRIDE, DATA,join(saved_dir, 'seg'))
 ## DE calculation takes a time. be careful
 # save_datas_seg_DE(WINDOW, STRIDE, DATA, join(saved_dir, 'seg_DE'))
-# save_datas_seg_PSD(WINDOW, STRIDE, DATA, join(saved_dir, 'seg_PSD'))
+save_datas_seg_PSD(WINDOW, STRIDE, DATA, join(saved_dir, 'seg_PSD'))
 
 # -----------------------------------------check---------------------------------------------------
 # Save the bar graph of the number of labels per class
