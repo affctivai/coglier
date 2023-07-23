@@ -46,6 +46,7 @@ parser.add_argument("--batch", dest="batch", action="store", default="64") # 64,
 parser.add_argument("--feature", dest="feature", action="store", default="DE") # DE, PSD
 parser.add_argument("--dataset", dest="dataset", action="store", default="GAMEEMO") # GAMEEMO, SEED, SEED_IV, DEAP
 parser.add_argument("--epoch", dest="epoch", action="store", default="1") # 1, 50, 100
+parser.add_argument("--dropout", dest="dropout", action="store", default="0") # 1, 50, 100
 
 args = parser.parse_args()
 
@@ -55,6 +56,7 @@ MODEL_NAME = args.model
 FEATURE = args.feature
 BATCH = int(args.batch)
 EPOCH = int(args.epoch)
+DROPOUT = float(args.dropout)
 
 PROJECT = 'baseline'
 
@@ -127,15 +129,15 @@ def run_train(model_name):
     # Model
     # hyperparameter 최적화 필요...
     if model_name == 'CCNN':
-        model = CCNN(num_classes=len(labels_name))
+        model = CCNN(num_classes=len(labels_name), dropout=DROPOUT)
         max_lr = 1e-4
         # EPOCH = 100
     elif model_name == 'TSC':
-        model = TSCeption(num_electrodes=trainset.x.shape[2], num_classes=len(labels_name), sampling_rate=128, dropout=0)
+        model = TSCeption(num_electrodes=trainset.x.shape[2], num_classes=len(labels_name), sampling_rate=128, dropout=DROPOUT)
         max_lr = 1e-3
         # EPOCH = 200
     elif model_name == 'EEGNet':
-        model = EEGNet(chunk_size=trainset.x.shape[3], num_electrodes=trainset.x.shape[2], num_classes=len(labels_name), dropout=0)
+        model = EEGNet(chunk_size=trainset.x.shape[3], num_electrodes=trainset.x.shape[2], num_classes=len(labels_name), dropout=DROPOUT)
         max_lr = 1e-3
         # EPOCH = 200
     elif model_name == 'DGCNN':
