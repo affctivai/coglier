@@ -14,7 +14,7 @@ import torch.nn as nn
 
 from utils.scheduler import CosineAnnealingWarmUpRestarts
 from utils.dataset import PreprocessedDataset_
-from utils.model import MyCCNN, TSCeption, EEGNet
+from utils.model import CCNN, TSCeption, EEGNet, DGCNN
 from utils.tools import MyScheduler, plot_scheduler, epoch_time, plot_train_result
 from torch.optim.lr_scheduler import _LRScheduler
 import math
@@ -40,50 +40,73 @@ import argparse
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--subID', type=str, default = '01')
+parser.add_argument("--model", dest="model", action="store", default="CCNN") # CCNN, TSC, EEGNet, DGCNN
 parser.add_argument('--epoch', type=int, default = 3)
 parser.add_argument('--batch', type=int, default = 64)
 parser.add_argument('--target', type=str, default = 'v') # 4, v, a
-parser.add_argument('--project_name', type=str, default = 'Subdepen_project')  # save result
+parser.add_argument("--feature", dest="feature", action="store", default="DE") # DE, PSD
+parser.add_argument('--project_name', type=str, default = 'subdepend')  # save result
+parser.add_argument("--dataset", dest="dataset", action="store", default="GAMEEMO") # GAMEEMO, SEED, SEED_IV, DEAP
 args = parser.parse_args()
 
 SUB   = args.subID
 EPOCH = args.epoch
 BATCH = args.batch
 LABEL = args.target
-projcet_name = args.project_name
+PROJECT = args.project_name
+MODEL_NAME = args.model
+FEATURE = args.feature
+DATASET_NAME = args.dataset
 
+if DATASET_NAME == 'GAMEEMO':
+    DATAS = join("C:\\", "Users", "LAPTOP", "jupydir", "DATAS", 'GAMEEMO_npz', 'Projects')
+    # LABEL = 'v'     # 4, v, a
+    # PROJECT = 'baseline'
+    # MODEL_NAME = 'DGCNN'    # 'CCNN', 'TSC', 'EEGNet', 'DGCNN'
+    # FEATURE = 'PSD'          # 'DE', 'PSD'
+    # BATCH = 64
+elif DATASET_NAME == 'SEED':
+    DATAS = join(os.getcwd(),"datasets", DATASET_NAME, "npz", "Projects")
+    # LABEL = '4' # 4, v, a
+    # EPOCH = 1
+    # BATCH = 128
+elif DATASET_NAME == 'SEED_IV':
+    DATAS = join(os.getcwd(),"datasets", DATASET_NAME, "npz", "Projects")
+    # LABEL = '4' # 4, v, a
+    # EPOCH = 100
+    # BATCH = 128
+elif DATASET_NAME == 'DEAP':
+    DATAS = join(os.getcwd(),"datasets", DATASET_NAME, "npz", "Projects")
+    # LABEL = 'v' # 4, v, a
+    # EPOCH = 1
+    # BATCH = 64
+else:
+    print("Unknown Dataset")
+    exit(1)
 
-# ---- GAMEEMO
-# DATASET_NAME = "GAMEEMO"
-# DATAS = join("C:\\", "Users", "LAPTOP", "jupydir", "DATAS", 'GAMEEMO_npz', 'Projects')
+#-----------------------------------------------------------------------------------------
+def set_args(project, model_name, feature, label): # 0.1 make dataset과 호환맞춘다면 편의대로...
+    if model_name == 'CCNN':
+        project_data = '_'.join([project, feature, 'grid'])
+        project_name = '_'.join([project, model_name, feature])
 
+    elif model_name in ['TSC', 'EEGNet']:
+        project_data = '_'.join([project, 'raw'])
+        project_name = '_'.join([project, model_name])
 
-# ---- DEAP
-# DATASET_NAME = "DEAP"
-# DATAS = join(os.getcwd(),"datasets", DATASET_NAME, "npz", "Projects")
+    elif model_name == 'DGCNN':
+        project_data = '_'.join([project, feature])
+        project_name = '_'.join([project, model_name, feature])
 
-# ---- SEED_IV
-DATASET_NAME = "SEED_IV"
-DATAS = join(os.getcwd(),"datasets", DATASET_NAME, "npz", "Projects")
+    if label == 'a':    train_name = 'arousal'
+    elif label == 'v':  train_name = 'valence'
+    else:               train_name = 'emotion'
 
-# ---- SEED
-# DATASET_NAME = "SEED"
-# DATAS = join(os.getcwd(),"datasets", DATASET_NAME, "npz", "Projects")
+    data_dir = join(DATAS, project_data)
+    data_name = f'{LABEL}'
+    return data_dir, data_name, project_name, train_name
 
-
-
-project_name = 'subdepend_de'
-# projcet_name = 'subdepend_EEGNet'
-# project_name = 'subdepend_TSC'
-
-DATA = join(DATAS, project_name, SUB)
-DNAME = 'seg_DE'
-
-NAME = f'{DNAME}_{LABEL}'
-
-if LABEL == 'a': train_name = 'arousal'
-elif LABEL == 'v': train_name = 'valence'
-else: train_name = 'emotion'
+DATA, NAME, project_name, train_name = set_args(PROJECT, MODEL_NAME, FEATURE, LABEL)
 
 train_path = Path(join(os.getcwd(), 'results', DATASET_NAME, project_name, SUB, train_name))
 # train_path = get_folder(train_path)
@@ -98,9 +121,20 @@ labels_name = validset.label.tolist()
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 # Model
-model = MyCCNN(in_channels=trainset.x.shape[1], num_classes=len(labels_name))
-# model = TSCeption(num_electrodes=trainset.x.shape[2], num_classes=len(labels_name))
-# model = EEGNet(num_electrodes=trainset.x.shape[2], num_classes=len(labels_name), chunk_size=256)
+
+if MODEL_NAME == 'CCNN':
+    model = CCNN(num_classes=len(labels_name), dropout=0.5)
+    max_lr = 1e-4
+elif MODEL_NAME == 'TSC':
+    model = TSCeption(num_electrodes=trainset.x.shape[2], num_classes=len(labels_name), sampling_rate=128, dropout=0.5)
+    max_lr = 1e-3
+elif MODEL_NAME == 'EEGNet':
+    model = EEGNet(chunk_size=trainset.x.shape[3], num_electrodes=trainset.x.shape[2], num_classes=len(labels_name), dropout=0.5)
+    max_lr = 1e-3
+elif MODEL_NAME == 'DGCNN':
+    model = DGCNN(in_channels=trainset.x.shape[2], num_electrodes=trainset.x.shape[1], num_classes=len(labels_name))
+    max_lr = 1e-3
+
 model = model.to(device)
 # print(summary(model, trainset.x.shape[1:]))
 
