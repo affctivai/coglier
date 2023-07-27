@@ -6,7 +6,7 @@ from pathlib import Path
 import numpy as np
 
 import torch
-from torchsummary import summary
+# from torchsummary import summary
 from torch.utils.data import DataLoader
 import torch.optim as optim
 import torch.optim.lr_scheduler as lr_scheduler
@@ -66,7 +66,7 @@ if DATASET_NAME == 'GAMEEMO':
     # FEATURE = 'PSD'          # 'DE', 'PSD'
     # BATCH = 64
 elif DATASET_NAME == 'SEED':
-    DATAS = join(os.getcwd(),"datasets", DATASET_NAME, "npz", "Projects")
+    DATAS = join(os.getcwd(),"datasets", DATASET_NAME, "npz","Projects")
     # LABEL = '4' # 4, v, a
     # EPOCH = 1
     # BATCH = 128
@@ -102,7 +102,7 @@ def set_args(project, model_name, feature, label): # 0.1 make dataset과 호환�
     elif label == 'v':  train_name = 'valence'
     else:               train_name = 'emotion'
 
-    data_dir = join(DATAS, project_data)
+    data_dir = join(DATAS, project_data, SUB)
     data_name = f'{LABEL}'
     return data_dir, data_name, project_name, train_name
 

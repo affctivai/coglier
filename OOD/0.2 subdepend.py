@@ -13,8 +13,6 @@ parser.add_argument("--batch", dest="batch", action="store", default="64") # 64,
 parser.add_argument("--feature", dest="feature", action="store", default="DE") # DE, PSD
 parser.add_argument("--dataset", dest="dataset", action="store", default="GAMEEMO") # GAMEEMO, SEED, SEED_IV, DEAP
 parser.add_argument("--epoch", dest="epoch", action="store", default="1") # 1, 50, 100
-parser.add_argument("--feature", dest="feature", action="store", default="DE") # DE, PSD
-parser.add_argument('--target', type=str, default = 'v') # 4, v, a
 
 args = parser.parse_args()
 
@@ -25,7 +23,6 @@ FEATURE = args.feature
 BATCH = int(args.batch)
 EPOCH = int(args.epoch)
 FEATURE = args.feature
-LABEL = args.target
 
 if DATASET_NAME == 'GAMEEMO':
     DATAS = join("C:\\", "Users", "LAPTOP", "jupydir", "DATAS", 'GAMEEMO_npz', 'Projects')
@@ -61,7 +58,7 @@ else:
 def run(sublist):
     for sub in sublist:
         print(sub)
-        subprocess.run(f'{sys.executable} subdepend.py --subID={sub} --batch={BATCH} --epoch={EPOCH} --target={LABEL} --project_name={project_name} --feature={FEATURE} --target={LABEL} --dataset={DATASET_NAME}')
+        subprocess.run(f'{sys.executable} subdepend.py --subID={sub} --batch={BATCH} --epoch={EPOCH} --target={LABEL} --project_name={project_name} --feature={FEATURE} --dataset={DATASET_NAME}', shell=True)
 
 def save_results(sublist):
     test_results = dict()

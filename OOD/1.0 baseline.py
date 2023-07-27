@@ -7,7 +7,7 @@ import numpy as np
 import argparse
 
 import torch
-from torchsummary import summary
+# from torchsummary import summary
 from torch.utils.data import DataLoader
 import torch.optim as optim
 import torch.nn as nn
@@ -146,7 +146,7 @@ def run_train(model_name):
         # EPOCH = 200
 
     model = model.to(device)
-    print(summary(model, trainset.x.shape[1:]))
+    # print(summary(model, trainset.x.shape[1:]))
 
     STEP = len(trainloader)
     STEPS = EPOCH * STEP
