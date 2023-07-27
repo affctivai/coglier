@@ -191,7 +191,7 @@ best_valid_loss = float('inf')
 scaler = torch.cuda.amp.GradScaler()
 with open(join(train_path, 'train.txt'), 'w') as file:
     file.write(f'LABEL {LABEL}:{labels_name}\t BATCH {BATCH}\
-                \n{DNAME}  train:{tuple(trainset.x.shape)}\tvalid:{tuple(validset.x.shape)}\
+                \n{NAME}  train:{tuple(trainset.x.shape)}\tvalid:{tuple(validset.x.shape)}\
                 \nEpoch {EPOCH}\tTrain  Loss/Acc\tValid  Loss/Acc\n')
 
     print(f'Epoch {EPOCH}\tTrain  Loss/Acc\tValid  Loss/Acc')
