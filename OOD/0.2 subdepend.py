@@ -1,5 +1,6 @@
 import os
 from os.path import join
+from pathlib import Path
 import pandas as pd
 import numpy as np
 import subprocess
@@ -13,6 +14,7 @@ parser.add_argument("--batch", dest="batch", action="store", default="64") # 64,
 parser.add_argument("--feature", dest="feature", action="store", default="DE") # DE, PSD
 parser.add_argument("--dataset", dest="dataset", action="store", default="GAMEEMO") # GAMEEMO, SEED, SEED_IV, DEAP
 parser.add_argument("--epoch", dest="epoch", action="store", default="1") # 1, 50, 100
+parser.add_argument("--test", dest="test", action="store_true")
 
 args = parser.parse_args()
 
@@ -22,6 +24,9 @@ MODEL_NAME = args.model
 FEATURE = args.feature
 BATCH = int(args.batch)
 EPOCH = int(args.epoch)
+FEATURE = args.feature
+TEST = args.test
+PROJECT = 'subdepend'
 
 if DATASET_NAME == 'GAMEEMO':
     DATAS = join("C:\\", "Users", "LAPTOP", "jupydir", "DATAS", 'GAMEEMO_npz', 'Projects')
@@ -53,33 +58,48 @@ else:
     print("Unknown Dataset")
     exit(1)
 
+def set_args(project, model_name, feature, label): # 0.1 make dataset과 호환맞춘다면 편의대로...
+    if model_name == 'CCNN':
+        project_data = '_'.join([project, feature, 'grid'])
+        project_name = '_'.join([project, model_name, feature])
+
+    elif model_name in ['TSC', 'EEGNet']:
+        project_data = '_'.join([project, 'raw'])
+        project_name = '_'.join([project, model_name])
+
+    elif model_name == 'DGCNN':
+        project_data = '_'.join([project, feature])
+        project_name = '_'.join([project, model_name, feature])
+
+    if label == 'a':    train_name = 'arousal'
+    elif label == 'v':  train_name = 'valence'
+    else:               train_name = 'emotion'
+
+    data_dir = join(DATAS, project_data)
+    data_name = f'{LABEL}'
+    return data_dir, data_name, project_name, train_name
+
+DATA, NAME, project_name, train_name = set_args(PROJECT, MODEL_NAME, FEATURE, LABEL)
+
 
 def run(sublist):
     for sub in sublist:
         print(sub)
-        subprocess.run(f'{sys.executable} subdepend.py --subID={sub} --batch={BATCH} --epoch={EPOCH} --target={LABEL} --project_name={project_name}')
+        subprocess.run(f'{sys.executable} subdepend.py --subID={sub} --batch={BATCH} --epoch={EPOCH} --target={LABEL} --project_name={PROJECT} --feature={FEATURE} --dataset={DATASET_NAME}', shell=True)
 
 def save_results(sublist):
     test_results = dict()
+    project_path = train_path = Path(join(os.getcwd(), 'results', DATASET_NAME, project_name))
     for sub in sublist:
-        file = open(join(projcet_path, sub, train_name, 'test.txt'), 'r')
+        file = open(join(project_path, sub, train_name, 'test.txt'), 'r')
         result = '{'+ file.readline() + '}'
         test_results[int(sub)] = eval(result)
 
     df = pd.DataFrame.from_dict(test_results, orient='index')
-    df.to_excel(join(projcet_path, f'{train_name}_results.xlsx'))
-
-project_name = 'Subdepend_de'
-# project_name = 'Subdepend_EEGNet'
-# project_name = 'Subdepend_TSC'
-projcet_path = join(os.getcwd(), 'results', DATASET_NAME, project_name)
-
-lb = '4'
-if lb == 'a': train_name = 'arousal'
-elif lb == 'v': train_name = 'valence'
-else: train_name = 'emotion'
+    df.to_excel(join(project_path, f'{train_name}_results.xlsx'))
 
 SUBLIST = [str(i).zfill(2) for i in range(1, SUBNUMS+1)]
 
-run(SUBLIST)
+if not TEST:
+    run(SUBLIST)
 save_results(SUBLIST)
