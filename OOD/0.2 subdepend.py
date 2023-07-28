@@ -1,5 +1,6 @@
 import os
 from os.path import join
+from pathlib import Path
 import pandas as pd
 import numpy as np
 import subprocess
@@ -88,13 +89,14 @@ def run(sublist):
 
 def save_results(sublist):
     test_results = dict()
+    project_path = train_path = Path(join(os.getcwd(), 'results', DATASET_NAME, project_name))
     for sub in sublist:
-        file = open(join(projcet_path, sub, train_name, 'test.txt'), 'r')
+        file = open(join(project_path, sub, train_name, 'test.txt'), 'r')
         result = '{'+ file.readline() + '}'
         test_results[int(sub)] = eval(result)
 
     df = pd.DataFrame.from_dict(test_results, orient='index')
-    df.to_excel(join(projcet_path, f'{train_name}_results.xlsx'))
+    df.to_excel(join(project_path, f'{train_name}_results.xlsx'))
 
 SUBLIST = [str(i).zfill(2) for i in range(1, SUBNUMS+1)]
 
