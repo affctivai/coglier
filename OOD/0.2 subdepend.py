@@ -96,9 +96,6 @@ def save_results(sublist):
     df = pd.DataFrame.from_dict(test_results, orient='index')
     df.to_excel(join(projcet_path, f'{train_name}_results.xlsx'))
 
-project_name = 'subdepend'
-projcet_path = join(os.getcwd(), 'results', DATASET_NAME, project_name)
-
 SUBLIST = [str(i).zfill(2) for i in range(1, SUBNUMS+1)]
 
 if not TEST:
