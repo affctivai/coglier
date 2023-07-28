@@ -99,11 +99,6 @@ def save_results(sublist):
 project_name = 'subdepend'
 projcet_path = join(os.getcwd(), 'results', DATASET_NAME, project_name)
 
-lb = '4'
-if lb == 'a': train_name = 'arousal'
-elif lb == 'v': train_name = 'valence'
-else: train_name = 'emotion'
-
 SUBLIST = [str(i).zfill(2) for i in range(1, SUBNUMS+1)]
 
 if not TEST:
