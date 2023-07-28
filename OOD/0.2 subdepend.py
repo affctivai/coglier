@@ -85,7 +85,7 @@ DATA, NAME, project_name, train_name = set_args(PROJECT, MODEL_NAME, FEATURE, LA
 def run(sublist):
     for sub in sublist:
         print(sub)
-        subprocess.run(f'{sys.executable} subdepend.py --subID={sub} --batch={BATCH} --epoch={EPOCH} --target={LABEL} --project_name={project_name} --feature={FEATURE} --dataset={DATASET_NAME}', shell=True)
+        subprocess.run(f'{sys.executable} subdepend.py --subID={sub} --batch={BATCH} --epoch={EPOCH} --target={LABEL} --project_name={PROJECT} --feature={FEATURE} --dataset={DATASET_NAME}', shell=True)
 
 def save_results(sublist):
     test_results = dict()
