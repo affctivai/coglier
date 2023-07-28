@@ -13,6 +13,7 @@ parser.add_argument("--batch", dest="batch", action="store", default="64") # 64,
 parser.add_argument("--feature", dest="feature", action="store", default="DE") # DE, PSD
 parser.add_argument("--dataset", dest="dataset", action="store", default="GAMEEMO") # GAMEEMO, SEED, SEED_IV, DEAP
 parser.add_argument("--epoch", dest="epoch", action="store", default="1") # 1, 50, 100
+parser.add_argument("--test", dest="test", action="store_true")
 
 args = parser.parse_args()
 
@@ -23,6 +24,8 @@ FEATURE = args.feature
 BATCH = int(args.batch)
 EPOCH = int(args.epoch)
 FEATURE = args.feature
+TEST = args.test
+PROJECT = 'subdepend'
 
 if DATASET_NAME == 'GAMEEMO':
     DATAS = join("C:\\", "Users", "LAPTOP", "jupydir", "DATAS", 'GAMEEMO_npz', 'Projects')
@@ -54,6 +57,29 @@ else:
     print("Unknown Dataset")
     exit(1)
 
+def set_args(project, model_name, feature, label): # 0.1 make dataset과 호환맞춘다면 편의대로...
+    if model_name == 'CCNN':
+        project_data = '_'.join([project, feature, 'grid'])
+        project_name = '_'.join([project, model_name, feature])
+
+    elif model_name in ['TSC', 'EEGNet']:
+        project_data = '_'.join([project, 'raw'])
+        project_name = '_'.join([project, model_name])
+
+    elif model_name == 'DGCNN':
+        project_data = '_'.join([project, feature])
+        project_name = '_'.join([project, model_name, feature])
+
+    if label == 'a':    train_name = 'arousal'
+    elif label == 'v':  train_name = 'valence'
+    else:               train_name = 'emotion'
+
+    data_dir = join(DATAS, project_data)
+    data_name = f'{LABEL}'
+    return data_dir, data_name, project_name, train_name
+
+DATA, NAME, project_name, train_name = set_args(PROJECT, MODEL_NAME, FEATURE, LABEL)
+
 
 def run(sublist):
     for sub in sublist:
@@ -80,5 +106,6 @@ else: train_name = 'emotion'
 
 SUBLIST = [str(i).zfill(2) for i in range(1, SUBNUMS+1)]
 
-run(SUBLIST)
+if not TEST:
+    run(SUBLIST)
 save_results(SUBLIST)
