@@ -17,7 +17,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument("--dataset", dest="dataset", action="store", default="GAMEEMO") # GAMEEMO, SEED, SEED_IV, DEAP
 parser.add_argument("--model", dest="model", action="store", default="GAMEEMO") # GAMEEMO, SEED, SEED_IV, DEAP
 parser.add_argument("--subdepend", dest="subdepend", action="store_true") # 넣으면 SD 없으면 SI
-parser.add_argument("--mode", dest="mode", action="store", default="make") # make, test, high
+parser.add_argument("--mode", dest="mode", action="store", default="make") # make, test
 
 args = parser.parse_args()
 
@@ -213,16 +213,6 @@ if MODE == 'make':
         elif MODEL == 'DGCNN':
             make_dataset_SD(join(DATAS,'Preprocessed','seg_DE'),SUBLIST,LABEL,None,None, join(DATAS, 'Projects', 'subdepend_DE'))
             make_dataset_SD(join(DATAS,'Preprocessed','seg_PSD'),SUBLIST,LABEL,'log',None, join(DATAS, 'Projects', 'subdepend_PSD'))
-
-# # After 0.2 subdepend.py--------------
-if MODE == 'high':
-    pass # 나중에 추가점
-# folder_name = 'Highs'
-# ## subdepend results
-# vRANKS = [4,18,24,9,10,1,3,12,8,20,17,6,11,5,7,13,27,23,2,16,19,15,22,21,25,26,28,14]
-# aRANKS = [4,24,18,10,12,15,9,11,17,3,22,16,5,6,2,7,21,13,8,19,20,1,25,23,27,26,28,14]
-# make_dataset_HL(DATA, vRANKS, cut=28-6, label='v', save_folder=join(DATAS, folder_name))
-# make_dataset_HL(DATA, aRANKS, cut=28-5, label='a', save_folder=join(DATAS, folder_name))
 
 # -----------------------------------------check---------------------------------------------------
 # load train, valid, test
