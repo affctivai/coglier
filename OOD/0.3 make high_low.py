@@ -19,6 +19,8 @@ parser.add_argument("--model", dest="model", action="store", default="GAMEEMO") 
 parser.add_argument("--feature", dest="feature", action="store", default="DE") # DE, PSD
 parser.add_argument("--column", dest="column", action="store", default="test_acc") # 기준 칼럼, test_acc, test_loss, roc_auc_score
 parser.add_argument("--cut", type= int, dest="cut", action="store", default="4") # low group count
+parser.add_argument("--rank", dest="rank", action="store_true") # Rank만 출력
+
 
 
 
@@ -30,6 +32,7 @@ FEATURE = args.feature
 PROJECT = 'subdepend'
 COLUMN = args.column
 CUT = args.cut
+RANK = args.rank
 
 if DATASET_NAME == 'GAMEEMO':
     DATAS = join("C:\\", "Users", "LAPTOP", "jupydir", "DATAS", 'GAMEEMO_npz')
@@ -232,11 +235,12 @@ col = np.sort(col)[::-1]
 print('SUB ID: ', rank)
 print(f'{COLUMN}:', col)
 
-if MODEL == 'CCNN':
-    make_dataset_HL(join(DATAS,'Preprocessed','seg_DE'),rank, SUB_NUM-CUT,LABEL,None,'grid', join(DATAS, 'Projects', f'High_DE_grid_{CUT}'))
-    make_dataset_HL(join(DATAS,'Preprocessed','seg_PSD'),rank, SUB_NUM-CUT,LABEL,'log','grid', join(DATAS, 'Projects', f'High_PSD_grid_{CUT}'))
-elif MODEL == 'TSC' or MODEL == 'EEGNet':
-    make_dataset_HL(join(DATAS,'Preprocessed','seg'),rank, SUB_NUM-CUT,LABEL,'standard','expand', join(DATAS, 'Projects', f'High_raw_{CUT}'))
-elif MODEL == 'DGCNN':
-    make_dataset_HL(join(DATAS,'Preprocessed','seg_DE'),rank,SUB_NUM-CUT,LABEL,None,None, join(DATAS, 'Projects', f'High_DE_{CUT}'))
-    make_dataset_HL(join(DATAS,'Preprocessed','seg_PSD'),rank,SUBNUM_CUT,LABEL,'log',None, join(DATAS, 'Projects', f'High_PSD_{CUT}'))
+if not RANK:
+    if MODEL == 'CCNN':
+        make_dataset_HL(join(DATAS,'Preprocessed','seg_DE'),rank, SUB_NUM-CUT,LABEL,None,'grid', join(DATAS, 'Projects', f'High_DE_grid_{CUT}'))
+        make_dataset_HL(join(DATAS,'Preprocessed','seg_PSD'),rank, SUB_NUM-CUT,LABEL,'log','grid', join(DATAS, 'Projects', f'High_PSD_grid_{CUT}'))
+    elif MODEL == 'TSC' or MODEL == 'EEGNet':
+        make_dataset_HL(join(DATAS,'Preprocessed','seg'),rank, SUB_NUM-CUT,LABEL,'standard','expand', join(DATAS, 'Projects', f'High_raw_{CUT}'))
+    elif MODEL == 'DGCNN':
+        make_dataset_HL(join(DATAS,'Preprocessed','seg_DE'),rank,SUB_NUM-CUT,LABEL,None,None, join(DATAS, 'Projects', f'High_DE_{CUT}'))
+        make_dataset_HL(join(DATAS,'Preprocessed','seg_PSD'),rank,SUBNUM_CUT,LABEL,'log',None, join(DATAS, 'Projects', f'High_PSD_{CUT}'))
