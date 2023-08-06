@@ -3,6 +3,8 @@ from os.path import join, split
 import random
 import numpy as np
 import argparse
+from pathlib import Path
+import pandas as pd
 
 from utils.tools import getFromnpz, getFromnpz_
 from sklearn.preprocessing import StandardScaler, RobustScaler
@@ -11,21 +13,26 @@ from sklearn.model_selection import train_test_split
 from utils.constant import *
 
 # -----------------------------------------Setting---------------------------------------------------
-# After 0.0 preprocessing.py
-
 parser = argparse.ArgumentParser()
 parser.add_argument("--dataset", dest="dataset", action="store", default="GAMEEMO") # GAMEEMO, SEED, SEED_IV, DEAP
 parser.add_argument("--model", dest="model", action="store", default="GAMEEMO") # GAMEEMO, SEED, SEED_IV, DEAP
-parser.add_argument("--subdepend", dest="subdepend", action="store_true") # 넣으면 SD 없으면 SI
-parser.add_argument("--mode", dest="mode", action="store", default="make") # make, test
+parser.add_argument("--feature", dest="feature", action="store", default="DE") # DE, PSD
+parser.add_argument("--column", dest="column", action="store", default="test_acc") # 기준 칼럼, test_acc, test_loss, roc_auc_score
+parser.add_argument("--cut", type= int, dest="cut", action="store", default="4") # low group count
+parser.add_argument("--rank", dest="rank", action="store_true") # Rank만 출력
+
+
+
 
 args = parser.parse_args()
 
 DATASET_NAME = args.dataset
 MODEL = args.model
-SUBDEPEND = args.subdepend
-MODE = args.mode
-
+FEATURE = args.feature
+PROJECT = 'subdepend'
+COLUMN = args.column
+CUT = args.cut
+RANK = args.rank
 
 if DATASET_NAME == 'GAMEEMO':
     DATAS = join("C:\\", "Users", "LAPTOP", "jupydir", "DATAS", 'GAMEEMO_npz')
@@ -55,6 +62,28 @@ else:
     print("Unknown Dataset")
     exit(1)
 
+def set_args(project, model_name, feature, label): # 0.1 make dataset과 호환맞춘다면 편의대로...
+    if model_name == 'CCNN':
+        project_data = '_'.join([project, feature, 'grid'])
+        project_name = '_'.join([project, model_name, feature])
+
+    elif model_name in ['TSC', 'EEGNet']:
+        project_data = '_'.join([project, 'raw'])
+        project_name = '_'.join([project, model_name])
+
+    elif model_name == 'DGCNN':
+        project_data = '_'.join([project, feature])
+        project_name = '_'.join([project, model_name, feature])
+
+    if label == 'a':    train_name = 'arousal'
+    elif label == 'v':  train_name = 'valence'
+    else:               train_name = 'emotion'
+
+    data_dir = join(DATAS, project_data)
+    data_name = f'{LABEL}'
+    return data_dir, data_name, project_name, train_name
+
+DATA, NAME, project_name, train_name = set_args(PROJECT, MODEL, FEATURE, LABEL)
 
 def seed(s):
     random.seed(s)
@@ -62,6 +91,7 @@ def seed(s):
     os.environ["PYTHONHASHSEED"] = str(s)
 SEED = 42
 seed(SEED)
+
 
 def save_dataset(folder, file_name, x, y, out=True):
     np.savez(join(folder, file_name), X=x, Y=y)
@@ -189,48 +219,28 @@ def make_dataset_HL(src, ranks, cut, label, scaler_name, shape_name, save_folder
     save_dataset(save_folder, f'{label}_lows', datas_l, targets_l)
 
 
-# -----------------------------------------main---------------------------------------------------
-SUBLIST = [str(i).zfill(2) for i in range(1, SUB_NUM+1)] # '01', '02', '03', ...
+## subdepend results
+# vRANKS = [4,18,24,9,10,1,3,12,8,20,17,6,11,5,7,13,27,23,2,16,19,15,22,21,25,26,28,14]
+# aRANKS = [4,24,18,10,12,15,9,11,17,3,22,16,5,6,2,7,21,13,8,19,20,1,25,23,27,26,28,14]
 
-# Sub Independent----------------
-# CCNN
-if MODE == 'make':
-    if not SUBDEPEND:
-        if MODEL == 'CCNN':
-            make_dataset_SI(join(DATAS,'Preprocessed','seg_DE'),SUBLIST,LABEL,None,'grid', join(DATAS, 'Projects', 'baseline_DE_grid'))
-            make_dataset_SI(join(DATAS,'Preprocessed','seg_PSD'),SUBLIST,LABEL,'log','grid', join(DATAS, 'Projects', 'baseline_PSD_grid'))
-        elif MODEL == 'TSC' or MODEL == 'EEGNet':
-            make_dataset_SI(join(DATAS,'Preprocessed','seg'),SUBLIST,LABEL,'standard','expand', join(DATAS, 'Projects', 'baseline_raw'))
-        elif MODEL == 'DGCNN':
-            make_dataset_SI(join(DATAS,'Preprocessed','seg_DE'),SUBLIST,LABEL,None,None, join(DATAS, 'Projects', 'baseline_DE'))
-            make_dataset_SI(join(DATAS,'Preprocessed','seg_PSD'),SUBLIST,LABEL,'log',None, join(DATAS, 'Projects', 'baseline_PSD'))
-    else: # SubDepend
-        if MODEL == 'CCNN':
-            make_dataset_SD(join(DATAS,'Preprocessed','seg_DE'),SUBLIST,LABEL, None, 'grid', join(DATAS, 'Projects', 'subdepend_DE_grid'))
-            make_dataset_SD(join(DATAS,'Preprocessed','seg_PSD'),SUBLIST,LABEL, 'log', 'grid', join(DATAS, 'Projects', 'subdepend_PSD_grid'))
-        elif MODEL == 'TSC' or MODEL == 'EEGNet':
-            make_dataset_SD(join(DATAS,'Preprocessed','seg'),SUBLIST,LABEL,'standard','expand', join(DATAS, 'Projects', 'subdepend_raw'))
-        elif MODEL == 'DGCNN':
-            make_dataset_SD(join(DATAS,'Preprocessed','seg_DE'),SUBLIST,LABEL,None,None, join(DATAS, 'Projects', 'subdepend_DE'))
-            make_dataset_SD(join(DATAS,'Preprocessed','seg_PSD'),SUBLIST,LABEL,'log',None, join(DATAS, 'Projects', 'subdepend_PSD'))
 
-# -----------------------------------------check---------------------------------------------------
-# load train, valid, test
 
-if MODE == 'test':
-    pass
-# def getDataset(path, names, mode):
-#     path = join(path, f'{names}_{mode}.npz')
-#     data = np.load(path, allow_pickle=True)
-#     datas, targets = data['X'], data['Y']
-#     return datas, targets
-#
-# # save_folder = join(DATAS, 'baseline')
-# save_folder = join(DATAS, 'SubDepen', '01')
-#
-# names = f'{split(DATA)[-1]}_{LABEL}'  # seg_DE_v
-# X_train, Y_train = getDataset(save_folder , names, 'train')
-# X_valid, Y_valid = getDataset(save_folder , names, 'valid')
-# X_test, Y_test = getDataset(save_folder , names, 'test')
-# print('check')
-# print(f'num of train: {len(Y_train)} \t num of valid: {len(Y_valid)} \t num of test: {len(Y_test)}')
+project_path = train_path = Path(join(os.getcwd(), 'results', DATASET_NAME, project_name))
+print('Read result from: ', project_path)
+
+result = pd.read_excel(join(project_path, f'{train_name}_results.xlsx'))
+col = result[COLUMN].to_numpy()
+rank = np.argsort(col)[::-1] + 1
+col = np.sort(col)[::-1]
+print('SUB ID: ', rank)
+print(f'{COLUMN}:', col)
+
+if not RANK:
+    if MODEL == 'CCNN':
+        make_dataset_HL(join(DATAS,'Preprocessed','seg_DE'),rank, SUB_NUM-CUT,LABEL,None,'grid', join(DATAS, 'Projects', f'High_DE_grid_{CUT}'))
+        make_dataset_HL(join(DATAS,'Preprocessed','seg_PSD'),rank, SUB_NUM-CUT,LABEL,'log','grid', join(DATAS, 'Projects', f'High_PSD_grid_{CUT}'))
+    elif MODEL == 'TSC' or MODEL == 'EEGNet':
+        make_dataset_HL(join(DATAS,'Preprocessed','seg'),rank, SUB_NUM-CUT,LABEL,'standard','expand', join(DATAS, 'Projects', f'High_raw_{CUT}'))
+    elif MODEL == 'DGCNN':
+        make_dataset_HL(join(DATAS,'Preprocessed','seg_DE'),rank,SUB_NUM-CUT,LABEL,None,None, join(DATAS, 'Projects', f'High_DE_{CUT}'))
+        make_dataset_HL(join(DATAS,'Preprocessed','seg_PSD'),rank,SUBNUM_CUT,LABEL,'log',None, join(DATAS, 'Projects', f'High_PSD_{CUT}'))
