@@ -1,38 +1,26 @@
 import os
-from os.path import join, split
+from os.path import join
 import random
 import numpy as np
 import argparse
 
-from utils.tools import getFromnpz, getFromnpz_
-from sklearn.preprocessing import StandardScaler, RobustScaler
-from utils.transform import make_grid
 from sklearn.model_selection import train_test_split
 from utils.constant import *
 
 # -----------------------------------------Setting---------------------------------------------------
-# After 0.0 preprocessing.py
-
 parser = argparse.ArgumentParser()
-parser.add_argument("--dataset", dest="dataset", action="store", default="GAMEEMO") # GAMEEMO, SEED, SEED_IV, DEAP
-parser.add_argument("--model", dest="model", action="store", default="GAMEEMO") # GAMEEMO, SEED, SEED_IV, DEAP
-parser.add_argument("--subdepend", dest="subdepend", action="store_true") # 넣으면 SD 없으면 SI
-parser.add_argument("--mode", dest="mode", action="store", default="make") # make, test
-
+parser.add_argument("--datasets", default="/mnt/data/research_EG", help='After 0.0 preprocessing.py') 
+parser.add_argument("--dataset", dest="dataset", action="store", default="GAMEEMO", help='GAMEEMO, SEED, SEED_IV, DEAP')
+parser.add_argument("--label", dest="label", action="store", default="v", help='v, a :GAMEEMO/DEAP')
 args = parser.parse_args()
 
+DATASETS = args.datasets
 DATASET_NAME = args.dataset
-MODEL = args.model
-SUBDEPEND = args.subdepend
-MODE = args.mode
-
+LABEL = args.label
 
 if DATASET_NAME == 'GAMEEMO':
-    DATAS = join("C:\\", "Users", "LAPTOP", "jupydir", "DATAS", 'GAMEEMO_npz')
-    SUB_NUM = 28
-    CHLS = GAMEEMO_CHLS
-    LOCATION = GAMEEMO_LOCATION
-    LABEL = 'a' # 4, v, a
+    DATAS = join(DATASETS, 'GAMEEMO_npz')
+    SUB_NUM = GAMEEMO_SUBNUM
 elif DATASET_NAME == 'SEED':
     DATAS = join(os.getcwd(),"datasets", "SEED", "npz")
     SUB_NUM = 15
@@ -63,174 +51,42 @@ def seed(s):
 SEED = 42
 seed(SEED)
 
-def save_dataset(folder, file_name, x, y, out=True):
-    np.savez(join(folder, file_name), X=x, Y=y)
-    if out: print(f'saved in {folder}')
 
-def scaling(datas, scaler_name = None):
-    if scaler_name == None: return datas
-    flattend = datas.reshape(-1, 1)
+def getFromnpz_(dir, sub, cla='v'):
+    sub += '.npz'
+    print(sub)
+    data = np.load(join(dir, sub), allow_pickle=True)
+    datas = data['x']
+    if cla == '4': targets = data['y']
+    if cla == 'v': targets = data['v']
+    if cla == 'a': targets = data['a']
+    return datas, targets
 
-    if scaler_name == 'standard':
-        scaler = StandardScaler()
-        scaled_datas = scaler.fit_transform(flattend)
+def make_dataset(src, sublists, label, save_dir):
+    os.makedirs(save_dir, exist_ok=True)
+    train_dir, test_dir = join(save_dir, 'train'), join(save_dir, 'test')
+    os.makedirs(train_dir, exist_ok=True)
+    os.makedirs(test_dir, exist_ok=True)
 
-    if scaler_name == 'robust':
-        scaler = RobustScaler()
-        scaled_datas = scaler.fit_transform(flattend)
-
-    if scaler_name == 'log':
-        scaled_datas = np.log1p(datas)
-
-    if scaler_name == 'log_standard':
-        scaler = StandardScaler()
-        scaled_datas = scaler.fit_transform(np.log1p(flattend))
-
-    scaled_datas = scaled_datas.reshape(datas.shape)
-    return scaled_datas
-
-def deshape(datas, shape_name = None):
-    if shape_name == None: return datas
-
-    # for CCNN model (samples, channels, 4 bands) -> (samples, 4 bands, 9, 9)
-    if shape_name == 'grid':
-        datas = make_grid(datas, CHLS, LOCATION)
-        print(f'grid (samples, 4freq, 9x9): {datas.shape}')
-
-    # for TSCeption, EEGnet (samples, channels, window) -> (samples, 1, channels, window)
-    if shape_name == 'expand':
-        datas = np.expand_dims(datas, axis=1)
-        print(f'expand (samples, 1, channels, window): {datas.shape}')
-    return datas
-
-# Subject Independent
-def make_dataset_SI(src, sublists, label, scaler_name, shape_name, save_folder):
-    datas, targets = getFromnpz(src, sublists, out=True, cla=label)
-    labels, countsl = np.unique(targets[:, 0], return_counts=True)
-    subIDs, countss = np.unique(targets[:, 1], return_counts=True)
-
-    print(f'data shape: {datas.shape} target shape: {targets.shape}')
-    print(f'label {label} count {labels} \t {countsl}') # labels
-    print(f'subID count {subIDs} \t {countss}\n') # subIDs
-
-    # transform
-    datas = scaling(datas, scaler_name)
-    datas = deshape(datas, shape_name)
-
-    # Make Dataset  ## train 80 : valid 10 : test 10
-    X_train, X, Y_train, Y = train_test_split(datas, targets, test_size=0.2, stratify=targets, random_state=SEED)
-    X_valid, X_test, Y_valid, Y_test = train_test_split(X, Y, test_size=0.5, stratify=Y, random_state=SEED)
-    print(f'num of train: {len(Y_train)} \t num of valid: {len(Y_valid)} \t num of test: {len(Y_test)}\n')
-
-    ## save train, valid, test
-    os.makedirs(save_folder, exist_ok=True)
-
-    save_dataset(save_folder, f'{label}_train', X_train, Y_train)
-    save_dataset(save_folder, f'{label}_valid', X_valid, Y_valid)
-    save_dataset(save_folder, f'{label}_test', X_test, Y_test)
-
-# Subject dependent
-def make_dataset_SD(src, sublists, label, scaler_name, shape_name, save_folder):
     for sub in sublists:
-        datas, targets = getFromnpz_(src, sub, out=True, cla=label)
+        datas, targets = getFromnpz_(src, sub, cla=label)
         labels, countsl = np.unique(targets[:, 0], return_counts=True)
         print(f'label {label} count {labels} \t {countsl}')  # labels
 
-        # transform
-        datas = scaling(datas, scaler_name)
-        datas = deshape(datas, shape_name)
+        # Make Dataset  ## train 90 : test 10
+        X_train, X_test, Y_train, Y_test = train_test_split(datas, targets, test_size=0.1, stratify=targets, random_state=SEED)
+        print(f'num of train: {len(Y_train)} \t num of test: {len(Y_test)}\n')
 
-        # Make Dataset  ## train 80 : valid 10 : test 10
-        X_train, X, Y_train, Y = train_test_split(datas, targets, test_size=0.2, stratify=targets, random_state=SEED)
-        X_valid, X_test, Y_valid, Y_test = train_test_split(X, Y, test_size=0.5, stratify=Y, random_state=SEED)
+        # save train, test
+        np.savez(join(train_dir, f'{label}_{sub}'), X=X_train, Y=Y_train)
+        np.savez(join(test_dir, f'{label}_{sub}'), X=X_test, Y=Y_test)
+    print(f'saved in {save_dir}')
 
-        ## save train, valid, test
-        save_folder_sub = join(save_folder, sub)
-        os.makedirs(save_folder_sub, exist_ok=True)
-
-        save_dataset(save_folder_sub, f'{label}_train', X_train, Y_train, out=False)
-        save_dataset(save_folder_sub, f'{label}_valid', X_valid, Y_valid, out=False)
-        save_dataset(save_folder_sub, f'{label}_test', X_test, Y_test, out=False)
-
-    print(f'num of train: {len(Y_train)} \t num of valid: {len(Y_valid)} \t num of test: {len(Y_test)}\n')
-
-# High Low dataset
-def make_dataset_HL(src, ranks, cut, label, scaler_name, shape_name, save_folder):
-    ranks = [str(sub).zfill(2) for sub in ranks]
-    # cut = int(28 * cut_rate)
-    higs = ranks[: cut]
-    lows = ranks[cut :]
-    print(label, 'high', len(higs), '명', higs)
-    print(label, 'low ', len(lows), '명', lows)
-
-    # make High dataset. train 80 : valid 10 : test 10
-    datas_h, targets_h = getFromnpz(src, higs, out=True, cla=label)
-
-    # transform
-    datas_h = scaling(datas_h, scaler_name)
-    datas_h = deshape(datas_h, shape_name)
-
-    X_train, X, Y_train, Y = train_test_split(datas_h, targets_h, test_size=0.2, stratify=targets_h, random_state=SEED)
-    X_valid, X_test, Y_valid, Y_test = train_test_split(X, Y, test_size=0.5, stratify=Y, random_state=SEED)
-    print(f'High train: {len(Y_train)} \t High valid: {len(Y_valid)}\t')
-
-    # make Low dataset.
-    datas_l, targets_l = getFromnpz(src, lows, out=True, cla=label)
-    datas_l = make_grid(datas_l, CHLS, LOCATION)
-    print(f'testset for measuring OOD performance| Highs: {len(Y_test)}, Lows: {len(targets_l)}')
-
-    ## save
-    os.makedirs(save_folder, exist_ok=True)
-
-    save_dataset(save_folder, f'{label}_train', X_train, Y_train)
-    save_dataset(save_folder, f'{label}_valid', X_valid, Y_valid)
-    save_dataset(save_folder, f'{label}_test', X_test, Y_test)
-
-    save_dataset(save_folder, f'{label}_lows', datas_l, targets_l)
 
 
 # -----------------------------------------main---------------------------------------------------
-SUBLIST = [str(i).zfill(2) for i in range(1, SUB_NUM+1)] # '01', '02', '03', ...
+SUBLIST = [str(i).zfill(2) for i in range(1, SUB_NUM + 1)] # '01', '02', '03', ...
 
-# Sub Independent----------------
-# CCNN
-if MODE == 'make':
-    if not SUBDEPEND:
-        if MODEL == 'CCNN':
-            make_dataset_SI(join(DATAS,'Preprocessed','seg_DE'),SUBLIST,LABEL,None,'grid', join(DATAS, 'Projects', 'baseline_DE_grid'))
-            make_dataset_SI(join(DATAS,'Preprocessed','seg_PSD'),SUBLIST,LABEL,'log','grid', join(DATAS, 'Projects', 'baseline_PSD_grid'))
-        elif MODEL == 'TSC' or MODEL == 'EEGNet':
-            make_dataset_SI(join(DATAS,'Preprocessed','seg'),SUBLIST,LABEL,'standard','expand', join(DATAS, 'Projects', 'baseline_raw'))
-        elif MODEL == 'DGCNN':
-            make_dataset_SI(join(DATAS,'Preprocessed','seg_DE'),SUBLIST,LABEL,None,None, join(DATAS, 'Projects', 'baseline_DE'))
-            make_dataset_SI(join(DATAS,'Preprocessed','seg_PSD'),SUBLIST,LABEL,'log',None, join(DATAS, 'Projects', 'baseline_PSD'))
-    else: # SubDepend
-        if MODEL == 'CCNN':
-            make_dataset_SD(join(DATAS,'Preprocessed','seg_DE'),SUBLIST,LABEL, None, 'grid', join(DATAS, 'Projects', 'subdepend_DE_grid'))
-            make_dataset_SD(join(DATAS,'Preprocessed','seg_PSD'),SUBLIST,LABEL, 'log', 'grid', join(DATAS, 'Projects', 'subdepend_PSD_grid'))
-        elif MODEL == 'TSC' or MODEL == 'EEGNet':
-            make_dataset_SD(join(DATAS,'Preprocessed','seg'),SUBLIST,LABEL,'standard','expand', join(DATAS, 'Projects', 'subdepend_raw'))
-        elif MODEL == 'DGCNN':
-            make_dataset_SD(join(DATAS,'Preprocessed','seg_DE'),SUBLIST,LABEL,None,None, join(DATAS, 'Projects', 'subdepend_DE'))
-            make_dataset_SD(join(DATAS,'Preprocessed','seg_PSD'),SUBLIST,LABEL,'log',None, join(DATAS, 'Projects', 'subdepend_PSD'))
-
-# -----------------------------------------check---------------------------------------------------
-# load train, valid, test
-
-if MODE == 'test':
-    pass
-# def getDataset(path, names, mode):
-#     path = join(path, f'{names}_{mode}.npz')
-#     data = np.load(path, allow_pickle=True)
-#     datas, targets = data['X'], data['Y']
-#     return datas, targets
-#
-# # save_folder = join(DATAS, 'baseline')
-# save_folder = join(DATAS, 'SubDepen', '01')
-#
-# names = f'{split(DATA)[-1]}_{LABEL}'  # seg_DE_v
-# X_train, Y_train = getDataset(save_folder , names, 'train')
-# X_valid, Y_valid = getDataset(save_folder , names, 'valid')
-# X_test, Y_test = getDataset(save_folder , names, 'test')
-# print('check')
-# print(f'num of train: {len(Y_train)} \t num of valid: {len(Y_valid)} \t num of test: {len(Y_test)}')
+make_dataset(join(DATAS,'Preprocessed', 'seg'),   SUBLIST,LABEL, join(DATAS, 'Projects', 'raw'))
+make_dataset(join(DATAS,'Preprocessed','seg_DE'), SUBLIST,LABEL, join(DATAS, 'Projects', 'DE'))
+make_dataset(join(DATAS,'Preprocessed','seg_PSD'),SUBLIST,LABEL, join(DATAS, 'Projects', 'PSD'))
