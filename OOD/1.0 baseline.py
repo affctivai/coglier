@@ -12,9 +12,12 @@ from torch.utils.data import DataLoader
 import torch.optim as optim
 import torch.nn as nn
 
-from utils.scheduler import CosineAnnealingWarmUpRestarts
-from utils.dataset import PreprocessedDataset
+from utils.constant import *
+from utils.transform import scaling, deshape
+from sklearn.model_selection import train_test_split
+from utils.dataset import load_list_subjects, PreprocessedDataset
 from utils.model import CCNN, TSCeption, EEGNet, DGCNN
+from utils.scheduler import CosineAnnealingWarmUpRestarts
 from utils.tools import MyScheduler, plot_scheduler, epoch_time, plot_train_result
 from utils.tools import plot_confusion_matrix, get_roc_auc_score
 from sklearn.metrics import classification_report
@@ -40,33 +43,32 @@ def get_folder(path):
     return path
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--model", dest="model", action="store", default="CCNN") # CCNN, TSC, EEGNet, DGCNN
-parser.add_argument("--label", dest="label", action="store", default="v") # 4, v, a
-parser.add_argument("--batch", dest="batch", action="store", default="64") # 64, 128
-parser.add_argument("--feature", dest="feature", action="store", default="DE") # DE, PSD
-parser.add_argument("--dataset", dest="dataset", action="store", default="GAMEEMO") # GAMEEMO, SEED, SEED_IV, DEAP
-parser.add_argument("--epoch", dest="epoch", action="store", default="1") # 1, 50, 100
-parser.add_argument("--dropout", dest="dropout", action="store", default="0") # 1, 50, 100
-
+parser.add_argument("--datasets", default="/mnt/data/research_EG", help='After 0.0 preprocessing.py')
+parser.add_argument("--dataset", dest="dataset", action="store", default="GAMEEMO", help='GAMEEMO, SEED, SEED_IV, DEAP')
+parser.add_argument("--label", dest="label", action="store", default="v", help='v, a :GAMEEMO/DEAP')
+parser.add_argument("--model", dest="model", action="store", default="CCNN", help='CCNN, TSC, EEGNet, DGCNN')
+parser.add_argument("--feature", dest="feature", action="store", default="DE", help='DE, PSD, raw')
+parser.add_argument("--batch", dest="batch", type=int, action="store", default=64) # 64, 128
+parser.add_argument("--epoch", dest="epoch", type=int, action="store", default=1) # 1, 50, 100
+parser.add_argument("--dropout", dest="dropout", type=float, action="store", default=0) # 1, 50, 100
 args = parser.parse_args()
 
+DATASETS = args.datasets
 DATASET_NAME = args.dataset
 LABEL = args.label
 MODEL_NAME = args.model
 FEATURE = args.feature
-BATCH = int(args.batch)
-EPOCH = int(args.epoch)
-DROPOUT = float(args.dropout)
+BATCH = args.batch
+EPOCH = args.epoch
+DROPOUT = args.dropout
 
-PROJECT = 'baseline'
+PROJECT = 'Baseline'
 
 if DATASET_NAME == 'GAMEEMO':
-    DATAS = join("C:\\", "Users", "LAPTOP", "jupydir", "DATAS", 'GAMEEMO_npz', 'Projects')
-    # LABEL = 'v'     # 4, v, a
-    # PROJECT = 'baseline'
-    # MODEL_NAME = 'DGCNN'    # 'CCNN', 'TSC', 'EEGNet', 'DGCNN'
-    # FEATURE = 'PSD'          # 'DE', 'PSD'
-    # BATCH = 64
+    DATAS = join(DATASETS, 'GAMEEMO_npz', 'Projects')
+    SUB_NUM = GAMEEMO_SUBNUM
+    CHLS = GAMEEMO_CHLS
+    LOCATION = GAMEEMO_LOCATION
 elif DATASET_NAME == 'SEED':
     DATAS = join(os.getcwd(),"datasets", DATASET_NAME, "npz", "Projects")
     # LABEL = '4' # 4, v, a
@@ -86,38 +88,39 @@ else:
     print("Unknown Dataset")
     exit(1)
 
+if MODEL_NAME == 'CCNN': SHAPE = 'grid'
+elif MODEL_NAME == 'TSC' or MODEL_NAME == 'EEGNet':
+    SHAPE = 'expand'
+    FEATURE = 'raw'
+elif MODEL_NAME == 'DGCNN': SHAPE = None
 
-#-----------------------------------------------------------------------------------------
-def set_args(project, model_name, feature, label): # 0.1 make dataset과 호환맞춘다면 편의대로...
-    if model_name == 'CCNN':
-        project_data = '_'.join([project, feature, 'grid'])
-        project_name = '_'.join([project, model_name, feature])
+if FEATURE == 'DE': SCALE = None
+elif FEATURE == 'PSD': SCALE = 'log'
+elif FEATURE == 'raw': SCALE = 'standard'
 
-    elif model_name in ['TSC', 'EEGNet']:
-        project_data = '_'.join([project, 'raw'])
-        project_name = '_'.join([project, model_name])
+if LABEL == 'a':    train_name = 'arousal'
+elif LABEL == 'v':  train_name = 'valence'
+else:               train_name = 'emotion'
 
-    elif model_name == 'DGCNN':
-        project_data = '_'.join([project, feature])
-        project_name = '_'.join([project, model_name, feature])
-
-    if label == 'a':    train_name = 'arousal'
-    elif label == 'v':  train_name = 'valence'
-    else:               train_name = 'emotion'
-
-    data_dir = join(DATAS, project_data)
-    data_name = f'{LABEL}'
-    return data_dir, data_name, project_name, train_name
-
-DATA, NAME, project_name, train_name = set_args(PROJECT, MODEL_NAME, FEATURE, LABEL)
+SUBLIST = [str(i).zfill(2) for i in range(1, SUB_NUM+1)] # '01', '02', '03', ...
+DATA = join(DATAS, FEATURE)
 
 #--------------------------------------train-------------------------------------------------------
 def run_train(model_name):
-    train_path.mkdir(parents=True, exist_ok=True)
+    print(f'{DATASET_NAME} {model_name} {FEATURE} (shape:{SHAPE},scale:{SCALE}) LABEL:{train_name}')
 
-    # Load train, valid
-    trainset = PreprocessedDataset(DATA, NAME, 'train')
-    validset = PreprocessedDataset(DATA, NAME, 'valid')
+    # Load train data
+    datas, targets = load_list_subjects(DATA, 'train', SUBLIST, LABEL)
+
+    # online transform
+    datas = scaling(datas, scaler_name=SCALE)
+    datas = deshape(datas, shape_name=SHAPE, chls=CHLS, location=LOCATION)
+
+    # Split into train, valid
+    X_train, X_valid, Y_train, Y_valid = train_test_split(datas, targets, test_size=0.1, stratify=targets, random_state=random_seed)
+
+    trainset = PreprocessedDataset(X_train, Y_train)
+    validset = PreprocessedDataset(X_valid, Y_valid)
     print(f'trainset: {trainset.x.shape} \t validset: {validset.x.shape}')
 
     trainloader = DataLoader(trainset, batch_size=BATCH, shuffle=True)
@@ -127,7 +130,6 @@ def run_train(model_name):
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
     # Model
-    # hyperparameter 최적화 필요...
     if model_name == 'CCNN':
         model = CCNN(num_classes=len(labels_name), dropout=DROPOUT)
         max_lr = 1e-4
@@ -165,8 +167,7 @@ def run_train(model_name):
         epoch_loss = 0; epoch_acc = 0
         model.train()
         for (x, y, subID) in loader:
-            x = x.to(device)
-            y = y.to(device)
+            x = x.to(device); y = y.to(device)
             optimizer.zero_grad()
             # AMP
             with torch.cuda.amp.autocast():
@@ -182,7 +183,6 @@ def run_train(model_name):
 
             lrs.append(optimizer.param_groups[0]['lr'])
             scheduler.step()
-
         return epoch_loss / len(loader), epoch_acc / len(loader)
 
     def evaluate(model, loader, criterion, device):
@@ -207,11 +207,10 @@ def run_train(model_name):
     best_valid_loss = float('inf')
     scaler = torch.cuda.amp.GradScaler()
     # ----------------------------------------run-------------------------------------------------------
+    train_path.mkdir(parents=True, exist_ok=True)
     with open(join(train_path, 'train.txt'), 'w') as file:
-        file.write(f'LABEL {LABEL}:{labels_name}\t BATCH {BATCH}\
-                    \n{NAME}  train:{tuple(trainset.x.shape)}\tvalid:{tuple(validset.x.shape)}\
-                    \nEpoch {EPOCH}\tTrain  Loss/Acc\tValid  Loss/Acc\n')
-
+        file.write(f'{train_name} {labels_name} train:{tuple(trainset.x.shape)} valid:{tuple(validset.x.shape)}\n'
+                   f'Epoch {EPOCH}  Train  Loss/Acc\tValid  Loss/Acc\n')
         print(f'Epoch {EPOCH}\tTrain  Loss/Acc\tValid  Loss/Acc')
         for epoch in range(EPOCH):
             start_time = time.monotonic()
@@ -233,17 +232,23 @@ def run_train(model_name):
             log = f'{epoch+1:02} {epoch_secs:2d}s \t {train_loss:1.3f}\t{train_acc*100:6.2f}%\t{valid_loss:1.3f}\t{valid_acc*100:6.2f}%'
             file.write(log + '\n')
             print(log)
-
     plot_scheduler(lrs, save=True, path=train_path)
     plot_train_result(train_losses, valid_losses, train_accs, valid_accs, EPOCH, size=(9, 5), path=train_path)
     print(f"model weights saved in '{join(train_path,'best.pt')}'")
 
 #--------------------------------------test--------------------------------------------------------
-def run_test(model_name):
-    test_path.mkdir(parents=True, exist_ok=True)
+def run_test(model_name, train_path):
+    if not exists(train_path):
+        raise FileNotFoundError(f"File not found: {train_path}, Set the train weight path properly.")
 
-    # Load test
-    testset = PreprocessedDataset(DATA, NAME, 'test')
+    # Load test data
+    datas, targets = load_list_subjects(DATA, 'test', SUBLIST, LABEL)
+
+    # online transform
+    datas = scaling(datas, scaler_name=SCALE)
+    datas = deshape(datas, shape_name=SHAPE, chls=CHLS, location=LOCATION)
+
+    testset = PreprocessedDataset(datas, targets)
     print(f'testset: {testset.x.shape}')
 
     testloader = DataLoader(testset, batch_size=BATCH, shuffle=False)
@@ -297,12 +302,11 @@ def run_test(model_name):
         return np.mean(losss), np.mean(accs), labels, preds, probs, subIDs
 
     # ----------------------------------------run-------------------------------------------------------
+    test_path.mkdir(parents=True, exist_ok=True)
     with open(join(test_path, 'output.txt'), 'w') as file:
-        file.write(f'{LABEL}:{labels_name}\t BATCH {BATCH}\
-                    \n{NAME}  test:{tuple(testset.x.shape)}\n')
-
+        file.write(f'{train_name} {labels_name} test:{tuple(testset.x.shape)}\n')
         test_loss, test_acc, labels, preds, probs, subIDs  = evaluate_test(model, testloader, criterion, device)
-        log = f'test_loss: {test_loss:.3f}\ttest_acc: {test_acc*100:6.2f}%\n'
+        log = f'test_loss: {test_loss:.3f}\ttest_acc: {test_acc*100:6.2f}%\t'
         log += f'roc_auc_score: {get_roc_auc_score(labels, preds)}\n'
         log += classification_report(labels, preds)
 
@@ -326,11 +330,11 @@ def run_test(model_name):
 
 #---------------------------------------main-------------------------------------------------------
 # save result in train_path
-train_path = Path(join(os.getcwd(), 'results', DATASET_NAME, project_name, train_name))
+train_path = Path(join(os.getcwd(), 'results', DATASET_NAME, PROJECT, train_name))
 train_path = get_folder(train_path)
 
-test_path = Path(join(train_path), 'test')
+test_path = Path(join(train_path, 'test'))
 test_path = get_folder(test_path)
 
 run_train(MODEL_NAME)
-run_test(MODEL_NAME)
+run_test(MODEL_NAME, train_path)

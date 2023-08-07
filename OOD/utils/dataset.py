@@ -3,17 +3,20 @@ import numpy as np
 import torch
 from torch.utils.data import Dataset
 
+# for subject independent--------------------------------------------------------------
+def load_list_subjects(src, mode, sublist, label):
+    datas, targets = [], []
+    for subnum in sublist:
+        subnum += '.npz'
+        data = np.load(join(src, mode, f'{label}_{subnum}'), allow_pickle=True)
+        datas.extend(data['X'])
+        targets.extend(data['Y'])
+    datas = np.array(datas); targets = np.array(targets)
+    return datas, targets
+
 class PreprocessedDataset(Dataset):
-    def __init__(self, src, names, mode):
-        self.src = src
-        self.names = names
-        self.mode = mode
-
-        self.path = join(self.src, f'{self.names}_{self.mode}.npz')
-
-        data = np.load(self.path, allow_pickle=True)
-        X, Y = data['X'], data['Y']
-        self.x = torch.tensor(X, dtype=torch.float32)
+    def __init__(self, x, Y):
+        self.x = torch.tensor(x, dtype=torch.float32)
         self.y = torch.tensor(Y[:, 0], dtype=torch.int64)
         self.subID = Y[:, 1]
 
@@ -23,17 +26,17 @@ class PreprocessedDataset(Dataset):
     def __len__(self):
         return self.y.shape[0]
 
-# for subject dependent
-class PreprocessedDataset_(Dataset):
-    def __init__(self, src, names, mode):
-        self.src = src
-        self.names = names
-        self.mode = mode
+# for subject dependent---------------------------------------------------------------
+def load_per_subject(src, mode, subnum, label):
+    subnum += '.npz'
+    data = np.load(join(src, mode, f'{label}_{subnum}'), allow_pickle=True)
+    datas = data['X']
+    targets = data['Y']
+    return datas, targets
 
-        self.path = join(self.src, f'{self.names}_{self.mode}.npz')
-        data = np.load(self.path, allow_pickle=True)
-        X, Y = data['X'], data['Y']
-        self.x = torch.tensor(X, dtype=torch.float32)
+class PreprocessedDataset_(Dataset):
+    def __init__(self, x, Y):
+        self.x = torch.tensor(x, dtype=torch.float32)
         tmp_y = torch.tensor(Y[:, 0], dtype=torch.int64)
         self.label, self.y = torch.unique(tmp_y, sorted=True, return_inverse=True)
 

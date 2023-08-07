@@ -1,6 +1,7 @@
 import numpy as np
 from scipy.signal import butter, lfilter
 from scipy.signal.windows import hann
+from sklearn.preprocessing import StandardScaler, RobustScaler
 
 # EEG feature extraction--------------------------------------------------------------------------
 # BandDifferentialEntropy, BandPowerSpectralDensity
@@ -66,22 +67,6 @@ class BandPowerSpectralDensity: # 양의 실수
 
 
 # 3D-> 4D-----------------------------------------------------------------------------------------
-def make_grid(datas):
-    CHLS = ['AF3', 'AF4', 'F3', 'F4', 'F7', 'F8', 'FC5', 'FC6', 'O1', 'O2', 'P7', 'P8', 'T7', 'T8']  # 14 channels
-    LOCATION = [['-', '-', '-', '-', '-', '-', '-', '-', '-'],
-                ['-', '-', '-', 'AF3', '-', 'AF4', '-', '-', '-'],
-                ['F7', '-', 'F3', '-', '-', '-', 'F4', '-', 'F8'],
-                ['-', 'FC5', '-', '-', '-', '-', '-', 'FC6', '-'],
-                ['T7', '-', '-', '-', '-', '-', '-', '-', 'T8'],
-                ['-', '-', '-', '-', '-', '-', '-', '-', '-'],
-                ['P7', '-', '-', '-', '-', '-', '-', '-', 'P8'],
-                ['-', '-', '-', '-', '-', '-', '-', '-', '-'],
-                ['-', '-', '-', 'O1', '-', 'O2', '-', '-', '-']]
-
-    CHANNEL_LOCATION_DICT = format_channel_location_dict(CHLS, LOCATION)
-    togrid = ToGrid(CHANNEL_LOCATION_DICT)
-    return np.array([togrid.apply(sample) for sample in datas])
-
 def make_grid(datas, channel, location):
     CHANNEL_LOCATION_DICT = format_channel_location_dict(channel, location)
     togrid = ToGrid(CHANNEL_LOCATION_DICT)
@@ -129,3 +114,41 @@ class ToGrid:
             outputs[i] = eeg[x][y]
         # num_electrodes x timestep
         return outputs
+
+# scaling-----------------------------------------------------------------------------------------
+def scaling(datas, scaler_name = None):
+    if scaler_name == None: return datas
+    flattend = datas.reshape(-1, 1)
+
+    if scaler_name == 'standard':
+        scaler = StandardScaler()
+        scaled_datas = scaler.fit_transform(flattend)
+
+    if scaler_name == 'robust':
+        scaler = RobustScaler()
+        scaled_datas = scaler.fit_transform(flattend)
+
+    if scaler_name == 'log':
+        scaled_datas = np.log1p(datas)
+
+    if scaler_name == 'log_standard':
+        scaler = StandardScaler()
+        scaled_datas = scaler.fit_transform(np.log1p(flattend))
+
+    scaled_datas = scaled_datas.reshape(datas.shape)
+    return scaled_datas
+
+# deshaoe-----------------------------------------------------------------------------------------
+def deshape(datas, shape_name = None, chls=None, location=None):
+    if shape_name == None: return datas
+
+    # for CCNN model (samples, channels, 4 bands) -> (samples, 4 bands, 9, 9)
+    if shape_name == 'grid':
+        datas = make_grid(datas, chls, location)
+        # print(f'grid (samples, 4freq, 9x9): {datas.shape}')
+
+    # for TSCeption, EEGnet (samples, channels, window) -> (samples, 1, channels, window)
+    if shape_name == 'expand':
+        datas = np.expand_dims(datas, axis=1)
+        # print(f'expand (samples, 1, channels, window): {datas.shape}')
+    return datas

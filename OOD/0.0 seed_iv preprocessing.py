@@ -39,7 +39,7 @@ def save_datas_noseg(data_dir, saved_dir):
                 time_size = len(data[0])
                 seg = data[:, :]
                 print(seg.shape)
-                AA
+                
                 x.append(seg)
                 y.append([session_label[session-1][trial_id], subnums[subidx]]) # 데이터마다 subID
         x = np.array(x, dtype='float16')
