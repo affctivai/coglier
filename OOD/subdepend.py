@@ -1,23 +1,27 @@
 import os
-from os.path import join, exists
+from os.path import join
 import time
 import random
 from pathlib import Path
 import numpy as np
+import argparse
 
 import torch
 # from torchsummary import summary
 from torch.utils.data import DataLoader
 import torch.optim as optim
-import torch.optim.lr_scheduler as lr_scheduler
 import torch.nn as nn
 
-from utils.scheduler import CosineAnnealingWarmUpRestarts
-from utils.dataset import PreprocessedDataset_
+from utils.constant import *
+from utils.transform import scaling, deshape
+from sklearn.model_selection import train_test_split
+from utils.dataset import load_per_subject, PreprocessedDataset_
 from utils.model import CCNN, TSCeption, EEGNet, DGCNN
-from utils.tools import MyScheduler, plot_scheduler, epoch_time, plot_train_result
-from torch.optim.lr_scheduler import _LRScheduler
+from utils.scheduler import CosineAnnealingWarmUpRestarts
+from utils.tools import plot_scheduler, epoch_time, plot_train_result
+from utils.tools import plot_confusion_matrix, get_roc_auc_score
 import math
+
 def seed_everything(seed):
     random.seed(seed)
     np.random.seed(seed)
@@ -27,44 +31,34 @@ def seed_everything(seed):
 random_seed = 42
 seed_everything(random_seed)
 
-def get_folder(path):
-    if path.exists():
-        for n in range(2, 100):
-            p = f'{path}{n}'
-            if not exists(p):
-                break
-        path = Path(p)
-    return path
 #-----------------------------------------------------------------------------------------
-import argparse
-
 parser = argparse.ArgumentParser()
+parser.add_argument("--datasets", default="/mnt/data/research_EG", help='After 0.0 preprocessing.py')
+parser.add_argument("--dataset", dest="dataset", action="store", default="GAMEEMO", help='GAMEEMO, SEED, SEED_IV, DEAP')
 parser.add_argument('--subID', type=str, default = '01')
-parser.add_argument("--model", dest="model", action="store", default="CCNN") # CCNN, TSC, EEGNet, DGCNN
-parser.add_argument('--epoch', type=int, default = 3)
+parser.add_argument("--label", type=str, default='v', help='v, a :GAMEEMO/DEAP')
+parser.add_argument("--model", dest="model", action="store", default="CCNN", help='CCNN, TSC, EEGNet, DGCNN')
+parser.add_argument("--feature", dest="feature", action="store", default="DE", help='DE, PSD, raw')
 parser.add_argument('--batch', type=int, default = 64)
-parser.add_argument('--target', type=str, default = 'v') # 4, v, a
-parser.add_argument("--feature", dest="feature", action="store", default="DE") # DE, PSD
-parser.add_argument('--project_name', type=str, default = 'subdepend')  # save result
-parser.add_argument("--dataset", dest="dataset", action="store", default="GAMEEMO") # GAMEEMO, SEED, SEED_IV, DEAP
+parser.add_argument('--epoch', type=int, default = 3)
+parser.add_argument('--project_name', type=str, default = 'Subdepend')  # save result
 args = parser.parse_args()
 
-SUB   = args.subID
-EPOCH = args.epoch
-BATCH = args.batch
-LABEL = args.target
-PROJECT = args.project_name
+DATASETS = args.datasets
+DATASET_NAME = args.dataset
+SUB = args.subID
+LABEL = args.label
 MODEL_NAME = args.model
 FEATURE = args.feature
-DATASET_NAME = args.dataset
+BATCH = args.batch
+EPOCH = args.epoch
+PROJECT = args.project_name
 
 if DATASET_NAME == 'GAMEEMO':
-    DATAS = join("C:\\", "Users", "LAPTOP", "jupydir", "DATAS", 'GAMEEMO_npz', 'Projects')
-    # LABEL = 'v'     # 4, v, a
-    # PROJECT = 'baseline'
-    # MODEL_NAME = 'DGCNN'    # 'CCNN', 'TSC', 'EEGNet', 'DGCNN'
-    # FEATURE = 'PSD'          # 'DE', 'PSD'
-    # BATCH = 64
+    DATAS = join(DATASETS, 'GAMEEMO_npz', 'Projects')
+    SUB_NUM = GAMEEMO_SUBNUM
+    CHLS = GAMEEMO_CHLS
+    LOCATION = GAMEEMO_LOCATION
 elif DATASET_NAME == 'SEED':
     DATAS = join(os.getcwd(),"datasets", DATASET_NAME, "npz","Projects")
     # LABEL = '4' # 4, v, a
@@ -84,44 +78,45 @@ else:
     print("Unknown Dataset")
     exit(1)
 
-#-----------------------------------------------------------------------------------------
-def set_args(project, model_name, feature, label): # 0.1 make dataset과 호환맞춘다면 편의대로...
-    if model_name == 'CCNN':
-        project_data = '_'.join([project, feature, 'grid'])
-        project_name = '_'.join([project, model_name, feature])
+if MODEL_NAME == 'CCNN': SHAPE = 'grid'
+elif MODEL_NAME == 'TSC' or MODEL_NAME == 'EEGNet':
+    SHAPE = 'expand'
+    FEATURE = 'raw'
+elif MODEL_NAME == 'DGCNN': SHAPE = None
 
-    elif model_name in ['TSC', 'EEGNet']:
-        project_data = '_'.join([project, 'raw'])
-        project_name = '_'.join([project, model_name])
+if FEATURE == 'DE': SCALE = None
+elif FEATURE == 'PSD': SCALE = 'log'
+elif FEATURE == 'raw': SCALE = 'standard'
 
-    elif model_name == 'DGCNN':
-        project_data = '_'.join([project, feature])
-        project_name = '_'.join([project, model_name, feature])
+if LABEL == 'a':    train_name = 'arousal'
+elif LABEL == 'v':  train_name = 'valence'
+else:               train_name = 'emotion'
 
-    if label == 'a':    train_name = 'arousal'
-    elif label == 'v':  train_name = 'valence'
-    else:               train_name = 'emotion'
+DATA = join(DATAS, FEATURE)
+SUBLIST = [str(i).zfill(2) for i in range(1, SUB_NUM+1)] # '01', '02', '03', ...
 
-    data_dir = join(DATAS, project_data, SUB)
-    data_name = f'{LABEL}'
-    return data_dir, data_name, project_name, train_name
+#-------------------------------------------------train---------------------------------------------------------------
+# Load train data
+datas, targets = load_per_subject(DATA, 'train', SUB, LABEL)
 
-DATA, NAME, project_name, train_name = set_args(PROJECT, MODEL_NAME, FEATURE, LABEL)
+# online transform
+datas = scaling(datas, scaler_name=SCALE)
+datas = deshape(datas, shape_name=SHAPE, chls=CHLS, location=LOCATION)
 
-train_path = Path(join(os.getcwd(), 'results', DATASET_NAME, project_name, SUB, train_name))
-# train_path = get_folder(train_path)
-train_path.mkdir(parents=True, exist_ok=True)
+# Split into train, valid
+X_train, X_valid, Y_train, Y_valid = train_test_split(datas, targets, test_size=0.1, stratify=targets, random_state=random_seed)
 
-# Load train, valid
-trainset = PreprocessedDataset_(DATA, NAME, 'train')
-validset = PreprocessedDataset_(DATA, NAME, 'valid')
+trainset = PreprocessedDataset_(X_train, Y_train)
+validset = PreprocessedDataset_(X_valid, Y_valid)
 print(f'trainset: {trainset.x.shape} \t validset: {validset.x.shape}')
+
+trainloader = DataLoader(trainset, batch_size=BATCH, shuffle=True)
+validloader = DataLoader(validset, batch_size=BATCH, shuffle=False)
 
 labels_name = validset.label.tolist()
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 # Model
-
 if MODEL_NAME == 'CCNN':
     model = CCNN(num_classes=len(labels_name), dropout=0.5)
     max_lr = 1e-4
@@ -138,15 +133,17 @@ elif MODEL_NAME == 'DGCNN':
 model = model.to(device)
 # print(summary(model, trainset.x.shape[1:]))
 
-trainloader = DataLoader(trainset, batch_size=BATCH, shuffle=True)
-validloader = DataLoader(validset, batch_size=BATCH, shuffle=False)
-
 STEP = len(trainloader)
 STEPS = EPOCH * STEP
 
-#--------------------------------------train-------------------------------------------------------
+optimizer = optim.Adam(model.parameters(), lr=0, weight_decay=1e-4)
+scheduler = CosineAnnealingWarmUpRestarts(optimizer,T_0=STEPS,T_mult=1,eta_max=max_lr,T_up=STEP*3,gamma=0.5)
+
+criterion = nn.CrossEntropyLoss()
+criterion = criterion.to(device)
+
 def train(model, loader, optimizer, criterion, scheduler, device, scaler):
-    epoch_loss = 0; epoch_acc = 0;
+    epoch_loss = 0; epoch_acc = 0
     model.train()
     for (x, y) in loader:
         x = x.to(device);   y = y.to(device)
@@ -178,22 +175,18 @@ def evaluate(model, loader, criterion, device):
             epoch_acc += acc.item()
     return epoch_loss/len(loader), epoch_acc/len(loader)
 
-criterion = nn.CrossEntropyLoss()
-criterion = criterion.to(device)
-
-optimizer = optim.Adam(model.parameters(), lr=0)
-scheduler = CosineAnnealingWarmUpRestarts(optimizer,T_0=STEPS,T_mult=1,eta_max=0.0001,T_up=STEP*3,gamma=0.5)
 
 lrs = []
 train_losses, train_accs = [],[]
 valid_losses, valid_accs = [],[]
 best_valid_loss = float('inf')
 scaler = torch.cuda.amp.GradScaler()
+# ----------------------------------------run-------------------------------------------------------
+train_path = Path(join(os.getcwd(), 'results', DATASET_NAME, PROJECT, SUB, train_name))
+train_path.mkdir(parents=True, exist_ok=True)
 with open(join(train_path, 'train.txt'), 'w') as file:
-    file.write(f'LABEL {LABEL}:{labels_name}\t BATCH {BATCH}\
-                \n{NAME}  train:{tuple(trainset.x.shape)}\tvalid:{tuple(validset.x.shape)}\
-                \nEpoch {EPOCH}\tTrain  Loss/Acc\tValid  Loss/Acc\n')
-
+    file.write(f'{train_name} {labels_name} train:{tuple(trainset.x.shape)} valid:{tuple(validset.x.shape)}\n'
+               f'Epoch {EPOCH}  Train  Loss/Acc\tValid  Loss/Acc\n')
     print(f'Epoch {EPOCH}\tTrain  Loss/Acc\tValid  Loss/Acc')
     for epoch in range(EPOCH):
         start_time = time.monotonic()
@@ -214,20 +207,24 @@ with open(join(train_path, 'train.txt'), 'w') as file:
         log = f'{epoch+1:02} {epoch_secs:2d}s \t {train_loss:1.3f}\t{train_acc*100:6.2f}%\t{valid_loss:1.3f}\t{valid_acc*100:6.2f}%'
         file.write(log + '\n')
         print(log)
-
-plot_scheduler(lrs, save=True, path=train_path)
+# plot_scheduler(lrs, save=True, path=train_path)
 plot_train_result(train_losses, valid_losses, train_accs, valid_accs, EPOCH, size=(9, 5), path=train_path)
 print(f"model weights saved in '{join(train_path,'best.pt')}'")
 
 #--------------------------------------test-------------------------------------------------------
-from utils.tools import plot_confusion_matrix, get_roc_auc_score
-from sklearn.metrics import classification_report
-
 model.load_state_dict(torch.load(join(train_path, 'best.pt')))
 
-testset = PreprocessedDataset_(DATA, NAME, 'test')
+# Load test data
+datas, targets = load_per_subject(DATA, 'test', SUB, LABEL)
+# online transform
+datas = scaling(datas, scaler_name=SCALE)
+datas = deshape(datas, shape_name=SHAPE, chls=CHLS, location=LOCATION)
+testset = PreprocessedDataset_(datas, targets)
 print(f'testset: {testset.x.shape}')
 testloader = DataLoader(testset, batch_size=BATCH, shuffle=False)
+
+criterion = nn.CrossEntropyLoss()
+criterion = criterion.to(device)
 
 def evaluate_test(model, loader, criterion, device):
     losss, accs = [], []
@@ -246,9 +243,6 @@ def evaluate_test(model, loader, criterion, device):
     labels = torch.cat(labels, dim=0)
     preds = torch.cat(preds, dim=0)
     return np.mean(losss), np.mean(accs), labels, preds
-
-criterion = nn.CrossEntropyLoss()
-criterion = criterion.to(device)
 
 with open(join(train_path, 'test.txt'), 'w') as file:
     test_loss, test_acc, labels, preds  = evaluate_test(model, testloader, criterion, device)

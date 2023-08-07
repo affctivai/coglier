@@ -10,24 +10,6 @@ from sklearn.metrics import roc_curve, auc, precision_recall_curve, roc_auc_scor
 from sklearn.preprocessing import OneHotEncoder
 
 
-# .npz load
-def getFromnpz(dir, sublist, out=True, cla='v'):
-    datas, targets = [], []
-    for subnum in sublist:
-        subnum += '.npz'
-        if out: print(subnum)
-        data = np.load(os.path.join(dir, subnum), allow_pickle=True)
-        datas.extend(data['x'])
-        if cla == '4':
-            targets.extend(data['y'])
-        if cla == 'v':
-            targets.extend(data['v'])
-        if cla == 'a':
-            targets.extend(data['a'])
-    datas = np.array(datas)
-    targets = np.array(targets)
-    return datas, targets
-
 def getFromnpz_(dir, sub, out=True, cla='v'):
     sub += '.npz'
     if out: print(sub, end=' ')
