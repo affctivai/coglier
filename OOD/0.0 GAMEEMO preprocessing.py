@@ -170,7 +170,7 @@ parser.add_argument("--src_dir", type=str, default="/mnt/data/GAMEEMO") # source
 parser.add_argument("--save_dir", type=str, default="/mnt/data/research_EG") # path to save preprocessed data(.npz format)
 parser.add_argument("--window", type=int, default=256)
 parser.add_argument("--stride", type=int, default=128)
-parser.add_argument("--method", type=str, default="seg", help='noseg/seg/PSD/DE')
+parser.add_argument("--method", type=str, default="seg", help='noseg, seg, PSD, DE')
 args = parser.parse_args()
 
 SRC = args.src_dir
