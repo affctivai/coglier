@@ -35,8 +35,8 @@ else:
     print("Unknown Dataset")
     exit(1)
 
-
-seed_everything(42)
+random_seed = 42
+seed_everything(random_seed)
 
 def make_dataset(src, sublists, label, save_dir):
     os.makedirs(save_dir, exist_ok=True)
@@ -50,7 +50,7 @@ def make_dataset(src, sublists, label, save_dir):
         print(f'label {label} count {labels} \t {countsl}')  # labels
 
         # Make Dataset  ## train 90 : test 10
-        X_train, X_test, Y_train, Y_test = train_test_split(datas, targets, test_size=0.1, stratify=targets, random_state=SEED)
+        X_train, X_test, Y_train, Y_test = train_test_split(datas, targets, test_size=0.1, stratify=targets, random_state=random_seed)
         print(f'num of train: {len(Y_train)} \t num of test: {len(Y_test)}\n')
 
         # save train, test

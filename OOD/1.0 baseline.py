@@ -16,14 +16,15 @@ from utils.constant import *
 from utils.transform import scaling, deshape
 from sklearn.model_selection import train_test_split
 from utils.dataset import load_list_subjects, PreprocessedDataset
-from utils.model import CCNN, TSCeption, EEGNet, DGCNN
+from utils.model import get_model
 from utils.scheduler import CosineAnnealingWarmUpRestarts
 from utils.tools import MyScheduler, plot_scheduler, epoch_time, plot_train_result
 from utils.tools import plot_confusion_matrix, get_roc_auc_score
 from utils.tools import seed_everything, get_folder
 from sklearn.metrics import classification_report
 
-seed_everything(42)
+random_seed = 42
+seed_everything(random_seed)
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--datasets", default="/mnt/data/research_EG", help='After 0.0 preprocessing.py')
