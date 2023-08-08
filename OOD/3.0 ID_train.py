@@ -79,22 +79,7 @@ def remove_ood(datas, targets):
     labels_name = np.unique(dataset.y) + 1
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-    if MODEL_NAME == 'CCNN':
-        ood_detector = CCNN(num_classes=len(labels_name), dropout=DROPOUT)
-        max_lr = 1e-4
-        # EPOCH = 100
-    elif MODEL_NAME == 'TSC':
-        ood_detector = TSCeption(num_electrodes=trainset.x.shape[2], num_classes=len(labels_name), sampling_rate=128, dropout=DROPOUT)
-        max_lr = 1e-3
-        # EPOCH = 200
-    elif MODEL_NAME == 'EEGNet':
-        ood_detector = EEGNet(chunk_size=trainset.x.shape[3], num_electrodes=trainset.x.shape[2], num_classes=len(labels_name), dropout=DROPOUT)
-        max_lr = 1e-3
-        # EPOCH = 200
-    elif MODEL_NAME == 'DGCNN':
-        ood_detector = DGCNN(in_channels=trainset.x.shape[2], num_electrodes=trainset.x.shape[1], num_classes=len(labels_name))
-        max_lr = 1e-3
-        # EPOCH = 200
+    ood_detector, _ = get_model(MODEL_NAME, dataset.x.shape, len(labels_name), device)
     ood_detector = ood_detector.to(device)
     ood_detector.load_state_dict(torch.load(join(ood_detector_path, 'best.pt')))
 
@@ -146,7 +131,7 @@ def run_train(model_name):
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
     # Model
-    model, max_lr = get_model(model_name, testset.x.shape, len(labels_name), device)
+    model, max_lr = get_model(model_name, validset.x.shape, len(labels_name), device)
 
     STEP = len(trainloader)
     STEPS = EPOCH * STEP
