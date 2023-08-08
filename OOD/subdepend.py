@@ -54,29 +54,7 @@ BATCH = args.batch
 EPOCH = args.epoch
 PROJECT = args.project_name
 
-if DATASET_NAME == 'GAMEEMO':
-    DATAS = join(DATASETS, 'GAMEEMO_npz', 'Projects')
-    SUB_NUM = GAMEEMO_SUBNUM
-    CHLS = GAMEEMO_CHLS
-    LOCATION = GAMEEMO_LOCATION
-elif DATASET_NAME == 'SEED':
-    DATAS = join(os.getcwd(),"datasets", DATASET_NAME, "npz","Projects")
-    # LABEL = '4' # 4, v, a
-    # EPOCH = 1
-    # BATCH = 128
-elif DATASET_NAME == 'SEED_IV':
-    DATAS = join(os.getcwd(),"datasets", DATASET_NAME, "npz", "Projects")
-    # LABEL = '4' # 4, v, a
-    # EPOCH = 100
-    # BATCH = 128
-elif DATASET_NAME == 'DEAP':
-    DATAS = join(os.getcwd(),"datasets", DATASET_NAME, "npz", "Projects")
-    # LABEL = 'v' # 4, v, a
-    # EPOCH = 1
-    # BATCH = 64
-else:
-    print("Unknown Dataset")
-    exit(1)
+DATAS, SUB_NUM, CHLS, LOCATION = load_dataset_info(DATASET_NAME)
 
 if MODEL_NAME == 'CCNN': SHAPE = 'grid'
 elif MODEL_NAME == 'TSC' or MODEL_NAME == 'EEGNet':
@@ -93,7 +71,7 @@ elif LABEL == 'v':  train_name = 'valence'
 else:               train_name = 'emotion'
 
 DATA = join(DATAS, FEATURE)
-SUBLIST = [str(i).zfill(2) for i in range(1, SUB_NUM+1)] # '01', '02', '03', ...
+# SUBLIST = [str(i).zfill(2) for i in range(1, SUB_NUM+1)] # '01', '02', '03', ...
 
 #-------------------------------------------------train---------------------------------------------------------------
 # Load train data
@@ -117,20 +95,7 @@ labels_name = validset.label.tolist()
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 # Model
-if MODEL_NAME == 'CCNN':
-    model = CCNN(num_classes=len(labels_name), dropout=0.5)
-    max_lr = 1e-4
-elif MODEL_NAME == 'TSC':
-    model = TSCeption(num_electrodes=trainset.x.shape[2], num_classes=len(labels_name), sampling_rate=128, dropout=0.5)
-    max_lr = 1e-3
-elif MODEL_NAME == 'EEGNet':
-    model = EEGNet(chunk_size=trainset.x.shape[3], num_electrodes=trainset.x.shape[2], num_classes=len(labels_name), dropout=0.5)
-    max_lr = 1e-3
-elif MODEL_NAME == 'DGCNN':
-    model = DGCNN(in_channels=trainset.x.shape[2], num_electrodes=trainset.x.shape[1], num_classes=len(labels_name))
-    max_lr = 1e-3
-
-model = model.to(device)
+model, max_lr = get_model(model_name, testset.x.shape, len(labels_name), device)
 # print(summary(model, trainset.x.shape[1:]))
 
 STEP = len(trainloader)
@@ -182,7 +147,11 @@ valid_losses, valid_accs = [],[]
 best_valid_loss = float('inf')
 scaler = torch.cuda.amp.GradScaler()
 # ----------------------------------------run-------------------------------------------------------
-train_path = Path(join(os.getcwd(), 'results', DATASET_NAME, PROJECT, SUB, train_name))
+if MODEL_NAME == 'EEGNet' or MODEL_NAME == 'TSC':
+    MODEL_FEATURE = MODEL_NAME
+else:
+    MODEL_FEATURE = '_'.join([MODEL_NAME, FEATURE])
+train_path = Path(join(os.getcwd(), 'results', DATASET_NAME, MODEL_FEATURE, PROJECT, SUB, train_name))
 train_path.mkdir(parents=True, exist_ok=True)
 with open(join(train_path, 'train.txt'), 'w') as file:
     file.write(f'{train_name} {labels_name} train:{tuple(trainset.x.shape)} valid:{tuple(validset.x.shape)}\n'

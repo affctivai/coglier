@@ -24,21 +24,12 @@ if DATASET_NAME == 'GAMEEMO':
 elif DATASET_NAME == 'SEED':
     DATAS = join(os.getcwd(),"datasets", "SEED", "npz")
     SUB_NUM = 15
-    CHLS = SEED_CHLS
-    LOCATION = SEED_LOCATION
-    LABEL = '4' # 4, v, a
 elif DATASET_NAME == 'SEED_IV':
     DATAS = join(os.getcwd(),"datasets", "SEED_IV", "npz")
     SUB_NUM = 15
-    CHLS = SEED_IV_CHLS
-    LOCATION = SEED_IV_LOCATION
-    LABEL = '4' # 4, v, a
 elif DATASET_NAME == 'DEAP':
     DATAS = join(os.getcwd(),"datasets", "DEAP", "npz")
     SUB_NUM = 32
-    CHLS = DEAP_CHLS
-    LOCATION = DEAP_LOCATION
-    LABEL = 'v' # 4, v, a
 else:
     print("Unknown Dataset")
     exit(1)

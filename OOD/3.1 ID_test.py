@@ -49,17 +49,7 @@ MODEL_NAME = args.model
 FEATURE = args.feature
 threshold = float(args.T)
 
-if DATASET_NAME == 'GAMEEMO':
-    DATAS = join("C:\\", "Users", "LAPTOP", "jupydir", "DATAS", 'GAMEEMO_npz', 'Projects')
-elif DATASET_NAME == 'SEED':
-    DATAS = join(os.getcwd(),"datasets", DATASET_NAME, "npz", "Projects")
-elif DATASET_NAME == 'SEED_IV':
-    DATAS = join(os.getcwd(),"datasets", DATASET_NAME, "npz", "Projects")
-elif DATASET_NAME == 'DEAP':
-    DATAS = join(os.getcwd(),"datasets", DATASET_NAME, "npz", "Projects")
-else:
-    print("Unknown Dataset")
-    exit(1)
+DATAS, SUB_NUM, CHLS, LOCATION = load_dataset_info(DATASET_NAME)
 
 Project_name = 'IND'
 

@@ -31,30 +31,8 @@ PROJECT = args.project_name
 TEST = args.test
 args = parser.parse_args()
 
-if DATASET_NAME == 'GAMEEMO':
-    DATAS = join(DATASETS, 'GAMEEMO_npz', 'Projects')
-    SUB_NUM = GAMEEMO_SUBNUM
-elif DATASET_NAME == 'SEED':
-    DATAS = join(os.getcwd(),"datasets", DATASET_NAME, "npz", "Projects")
-    SUBNUMS = 15
-    # LABEL = '4' # 4, v, a
-    # EPOCH = 1
-    # BATCH = 128
-elif DATASET_NAME == 'SEED_IV':
-    DATAS = join(os.getcwd(),"datasets", DATASET_NAME, "npz", "Projects")
-    SUBNUMS = 15
-    # LABEL = '4' # 4, v, a
-    # EPOCH = 100
-    # BATCH = 128
-elif DATASET_NAME == 'DEAP':
-    DATAS = join(os.getcwd(),"datasets", DATASET_NAME, "npz", "Projects")
-    SUBNUMS = 32
-    # LABEL = 'v' # 4, v, a
-    # EPOCH = 1
-    # BATCH = 64
-else:
-    print("Unknown Dataset")
-    exit(1)
+
+DATAS, SUB_NUM, CHLS, LOCATION = load_dataset_info(DATASET_NAME)
 
 if LABEL == 'a':    train_name = 'arousal'
 elif LABEL == 'v':  train_name = 'valence'
@@ -72,7 +50,11 @@ def run(sublist):
 
 def save_results(sublist):
     test_results = dict()
-    project_path = train_path = Path(join(os.getcwd(), 'results', DATASET_NAME, PROJECT))
+    if MODEL_NAME == 'EEGNet' or MODEL_NAME == 'TSC':
+        MODEL_FEATURE = MODEL_NAME
+    else:
+        MODEL_FEATURE = '_'.join([MODEL_NAME, FEATURE])
+    project_path = train_path = Path(join(os.getcwd(), 'results', DATASET_NAME, MODEL_FEATURE, PROJECT))
     for sub in sublist:
         file = open(join(project_path, sub, train_name, 'test.txt'), 'r')
         result = '{'+ file.readline() + '}'
@@ -81,6 +63,6 @@ def save_results(sublist):
     df = pd.DataFrame.from_dict(test_results, orient='index')
     df.to_excel(join(project_path, f'{train_name}_results.xlsx'))
 
-# if not TEST:
-#     run(SUBLIST)
-# save_results(SUBLIST)
+if not TEST:
+    run(SUBLIST)
+save_results(SUBLIST)

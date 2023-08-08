@@ -29,6 +29,28 @@ URL: https://ieeexplore.ieee.org/abstract/document/8320798
 Related Project: https://github.com/xueyunlong12589/DGCNN
 '''
 
+def get_model(model_name, data_x_shape, num_classes, device):
+    if model_name == 'CCNN':
+        model = CCNN(num_classes=num_classes)
+        max_lr = 1e-4
+        return model.to(device), max_lr
+    elif model_name == 'TSC':
+        model = TSCeption(num_electrodes=data_x_shape[2], num_classes=num_classes, sampling_rate=128)
+        max_lr = 1e-3
+        return model.to(device), max_lr
+    elif model_name == 'EEGNet':
+        model = EEGNet(chunk_size=data_x_shape[3], num_electrodes=data_x_shape[2], num_classes=num_classes)
+        max_lr = 1e-3
+        return model.to(device), max_lr
+    elif model_name == 'DGCNN':
+        model = DGCNN(in_channels=data_x_shape[2], num_electrodes=data_x_shape[1], num_classes=num_classes)
+        max_lr = 1e-3
+        return model.to(device), max_lr
+    else:
+        print("Unknown Model.")
+        exti(1)
+    
+
 # ------------------------------------------LSTM----------------------------------------------
 class LSTM(nn.Module):
     def __init__(self, num_electrodes: int = 32, num_classes: int = 2,
