@@ -6,6 +6,7 @@ import argparse
 
 from sklearn.model_selection import train_test_split
 from utils.constant import *
+from utils.tools import getFromnpz_, seed_everything
 
 # -----------------------------------------Setting---------------------------------------------------
 parser = argparse.ArgumentParser()
@@ -35,23 +36,7 @@ else:
     exit(1)
 
 
-def seed(s):
-    random.seed(s)
-    np.random.seed(s)
-    os.environ["PYTHONHASHSEED"] = str(s)
-SEED = 42
-seed(SEED)
-
-
-def getFromnpz_(dir, sub, cla='v'):
-    sub += '.npz'
-    print(sub)
-    data = np.load(join(dir, sub), allow_pickle=True)
-    datas = data['x']
-    if cla == '4': targets = data['y']
-    if cla == 'v': targets = data['v']
-    if cla == 'a': targets = data['a']
-    return datas, targets
+seed_everything(42)
 
 def make_dataset(src, sublists, label, save_dir):
     os.makedirs(save_dir, exist_ok=True)
@@ -72,8 +57,6 @@ def make_dataset(src, sublists, label, save_dir):
         np.savez(join(train_dir, f'{label}_{sub}'), X=X_train, Y=Y_train)
         np.savez(join(test_dir, f'{label}_{sub}'), X=X_test, Y=Y_test)
     print(f'saved in {save_dir}')
-
-
 
 # -----------------------------------------main---------------------------------------------------
 SUBLIST = [str(i).zfill(2) for i in range(1, SUB_NUM + 1)] # '01', '02', '03', ...

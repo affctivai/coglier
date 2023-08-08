@@ -23,26 +23,9 @@ from utils.model import CCNN, TSCeption, EEGNet, DGCNN
 from utils.scheduler import CosineAnnealingWarmUpRestarts
 from utils.tools import plot_scheduler, epoch_time, plot_train_result
 from utils.tools import get_roc_auc_score, print_auroc, getFromnpz_
+from utils.tools import seed_everything, get_folder
 
-def seed_everything(seed):
-    random.seed(seed)
-    np.random.seed(seed)
-    os.environ["PYTHONHASHSEED"] = str(seed)
-    torch.manual_seed(seed)
-    torch.cuda.manual_seed(seed)
-    torch.backends.cudnn.deterministic = True
-    torch.backends.cudnn.benchmark = False
-random_seed = 42
-seed_everything(random_seed)
-
-def get_folder(path):
-    if path.exists():
-        for n in range(2, 100):
-            p = f'{path}{n}'
-            if not exists(p):
-                break
-        path = Path(p)
-    return path
+seed_everything(42)
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--datasets", default="/mnt/data/research_EG", help='After 0.0 preprocessing.py')

@@ -20,16 +20,10 @@ from utils.model import CCNN, TSCeption, EEGNet, DGCNN
 from utils.scheduler import CosineAnnealingWarmUpRestarts
 from utils.tools import plot_scheduler, epoch_time, plot_train_result
 from utils.tools import plot_confusion_matrix, get_roc_auc_score
+from utils.tools import seed_everything, get_folder
 import math
 
-def seed_everything(seed):
-    random.seed(seed)
-    np.random.seed(seed)
-    os.environ["PYTHONHASHSEED"] = str(seed)
-    torch.manual_seed(seed)
-    torch.cuda.manual_seed(seed)
-random_seed = 42
-seed_everything(random_seed)
+seed_everything(42)
 
 #-----------------------------------------------------------------------------------------
 parser = argparse.ArgumentParser()
