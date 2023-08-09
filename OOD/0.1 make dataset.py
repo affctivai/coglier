@@ -6,6 +6,7 @@ import argparse
 
 from sklearn.model_selection import train_test_split
 from utils.constant import *
+from utils.tools import getFromnpz_, seed_everything
 
 # -----------------------------------------Setting---------------------------------------------------
 parser = argparse.ArgumentParser()
@@ -24,43 +25,18 @@ if DATASET_NAME == 'GAMEEMO':
 elif DATASET_NAME == 'SEED':
     DATAS = join(os.getcwd(),"datasets", "SEED", "npz")
     SUB_NUM = 15
-    CHLS = SEED_CHLS
-    LOCATION = SEED_LOCATION
-    LABEL = '4' # 4, v, a
 elif DATASET_NAME == 'SEED_IV':
     DATAS = join(os.getcwd(),"datasets", "SEED_IV", "npz")
     SUB_NUM = 15
-    CHLS = SEED_IV_CHLS
-    LOCATION = SEED_IV_LOCATION
-    LABEL = '4' # 4, v, a
 elif DATASET_NAME == 'DEAP':
     DATAS = join(os.getcwd(),"datasets", "DEAP", "npz")
     SUB_NUM = 32
-    CHLS = DEAP_CHLS
-    LOCATION = DEAP_LOCATION
-    LABEL = 'v' # 4, v, a
 else:
     print("Unknown Dataset")
     exit(1)
 
-
-def seed(s):
-    random.seed(s)
-    np.random.seed(s)
-    os.environ["PYTHONHASHSEED"] = str(s)
-SEED = 42
-seed(SEED)
-
-
-def getFromnpz_(dir, sub, cla='v'):
-    sub += '.npz'
-    print(sub)
-    data = np.load(join(dir, sub), allow_pickle=True)
-    datas = data['x']
-    if cla == '4': targets = data['y']
-    if cla == 'v': targets = data['v']
-    if cla == 'a': targets = data['a']
-    return datas, targets
+random_seed = 42
+seed_everything(random_seed)
 
 def make_dataset(src, sublists, label, save_dir):
     os.makedirs(save_dir, exist_ok=True)
@@ -74,15 +50,13 @@ def make_dataset(src, sublists, label, save_dir):
         print(f'label {label} count {labels} \t {countsl}')  # labels
 
         # Make Dataset  ## train 90 : test 10
-        X_train, X_test, Y_train, Y_test = train_test_split(datas, targets, test_size=0.1, stratify=targets, random_state=SEED)
+        X_train, X_test, Y_train, Y_test = train_test_split(datas, targets, test_size=0.1, stratify=targets, random_state=random_seed)
         print(f'num of train: {len(Y_train)} \t num of test: {len(Y_test)}\n')
 
         # save train, test
         np.savez(join(train_dir, f'{label}_{sub}'), X=X_train, Y=Y_train)
         np.savez(join(test_dir, f'{label}_{sub}'), X=X_test, Y=Y_test)
     print(f'saved in {save_dir}')
-
-
 
 # -----------------------------------------main---------------------------------------------------
 SUBLIST = [str(i).zfill(2) for i in range(1, SUB_NUM + 1)] # '01', '02', '03', ...

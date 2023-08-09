@@ -13,35 +13,20 @@ from torch.utils.data import DataLoader
 import torch.optim as optim
 import torch.nn as nn
 import torch.nn.functional as F
+from torch.utils.data import Dataset
 
 from utils.constant import *
 from utils.transform import scaling, deshape
 from sklearn.model_selection import train_test_split
 from utils.dataset import load_list_subjects, PreprocessedDataset
-from utils.model import CCNN, TSCeption, EEGNet, DGCNN
+from utils.model import get_model
 from utils.scheduler import CosineAnnealingWarmUpRestarts
 from utils.tools import plot_scheduler, epoch_time, plot_train_result
-from utils.tools import get_roc_auc_score, print_auroc
+from utils.tools import get_roc_auc_score, print_auroc, getFromnpz_
+from utils.tools import seed_everything, get_folder
 
-def seed_everything(seed):
-    random.seed(seed)
-    np.random.seed(seed)
-    os.environ["PYTHONHASHSEED"] = str(seed)
-    torch.manual_seed(seed)
-    torch.cuda.manual_seed(seed)
-    torch.backends.cudnn.deterministic = True
-    torch.backends.cudnn.benchmark = False
 random_seed = 42
 seed_everything(random_seed)
-
-def get_folder(path):
-    if path.exists():
-        for n in range(2, 100):
-            p = f'{path}{n}'
-            if not exists(p):
-                break
-        path = Path(p)
-    return path
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--datasets", default="/mnt/data/research_EG", help='After 0.0 preprocessing.py')
@@ -56,6 +41,7 @@ parser.add_argument("--dropout", dest="dropout", type=float, action="store", def
 # parser.add_argument('--project_name', type=str, default = 'Baseline', help='Baseline, High, ID')
 parser.add_argument("--column", dest="column", action="store", default="test_acc", help='test_acc, test_loss, roc_auc_score') # 기준 칼럼
 parser.add_argument("--cut", type= int, dest="cut", action="store", default="4") # low group count
+parser.add_argument("--test", dest="test", action="store_true") # Whether to train data
 args = parser.parse_args()
 
 DATASETS = args.datasets
@@ -70,30 +56,9 @@ DROPOUT = args.dropout
 PROJECT = 'High'
 COLUMN = args.column
 CUT = args.cut
+TEST = args.test
 
-if DATASET_NAME == 'GAMEEMO':
-    DATAS = join(DATASETS, 'GAMEEMO_npz', 'Projects')
-    SUB_NUM = GAMEEMO_SUBNUM
-    CHLS = GAMEEMO_CHLS
-    LOCATION = GAMEEMO_LOCATION
-elif DATASET_NAME == 'SEED':
-    DATAS = join(os.getcwd(),"datasets", DATASET_NAME, "npz", "Projects")
-    # LABEL = '4' # 4, v, a
-    # EPOCH = 1
-    # BATCH = 128
-elif DATASET_NAME == 'SEED_IV':
-    DATAS = join(os.getcwd(),"datasets", DATASET_NAME, "npz", "Projects")
-    # LABEL = '4' # 4, v, a
-    # EPOCH = 100
-    # BATCH = 128
-elif DATASET_NAME == 'DEAP':
-    DATAS = join(os.getcwd(),"datasets", DATASET_NAME, "npz", "Projects")
-    # LABEL = 'v' # 4, v, a
-    # EPOCH = 1
-    # BATCH = 64
-else:
-    print("Unknown Dataset")
-    exit(1)
+DATAS, SUB_NUM, CHLS, LOCATION = load_dataset_info(DATASET_NAME)
 
 if MODEL_NAME == 'CCNN': SHAPE = 'grid'
 elif MODEL_NAME == 'TSC' or MODEL_NAME == 'EEGNet':
@@ -110,8 +75,12 @@ elif LABEL == 'v':  train_name = 'valence'
 else:               train_name = 'emotion'
 
 
+if MODEL_NAME == 'EEGNet' or MODEL_NAME == 'TSC':
+    MODEL_FEATURE = MODEL_NAME
+else:
+    MODEL_FEATURE = '_'.join([MODEL_NAME, FEATURE])
 # After subdepend.py----------
-subdepend_result_path = Path(join(os.getcwd(), 'results', DATASET_NAME, 'Subdepend'))
+subdepend_result_path = Path(join(os.getcwd(), 'results', DATASET_NAME, MODEL_FEATURE, 'Subdepend'))
 print('Read subject-dependent result from: ', subdepend_result_path)
 result = pd.read_excel(join(subdepend_result_path, f'{train_name}_results.xlsx'))
 col = result[COLUMN].to_numpy()
@@ -158,24 +127,8 @@ validloader = DataLoader(validset, batch_size=BATCH, shuffle=False)
 labels_name = np.unique(validset.y) + 1
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-if MODEL_NAME == 'CCNN':
-    model = CCNN(num_classes=len(labels_name), dropout=DROPOUT)
-    max_lr = 1e-4
-    # EPOCH = 100
-elif MODEL_NAME == 'TSC':
-    model = TSCeption(num_electrodes=trainset.x.shape[2], num_classes=len(labels_name), sampling_rate=128, dropout=DROPOUT)
-    max_lr = 1e-3
-    # EPOCH = 200
-elif MODEL_NAME == 'EEGNet':
-    model = EEGNet(chunk_size=trainset.x.shape[3], num_electrodes=trainset.x.shape[2], num_classes=len(labels_name), dropout=DROPOUT)
-    max_lr = 1e-3
-    # EPOCH = 200
-elif MODEL_NAME == 'DGCNN':
-    model = DGCNN(in_channels=trainset.x.shape[2], num_electrodes=trainset.x.shape[1], num_classes=len(labels_name))
-    max_lr = 1e-3
-    # EPOCH = 200
+model, max_lr = get_model(MODEL_NAME, testset.x.shape, len(labels_name), device)
 
-model = model.to(device)
 STEP = len(trainloader)
 STEPS = EPOCH * STEP
 optimizer = optim.Adam(model.parameters(), lr=0, weight_decay=1e-4)
@@ -183,7 +136,7 @@ scheduler = CosineAnnealingWarmUpRestarts(optimizer, T_0=STEPS, T_mult=1, eta_ma
 criterion = nn.CrossEntropyLoss()
 criterion = criterion.to(device)
 
-train_path = Path(join(os.getcwd(), 'results', DATASET_NAME, PROJECT, train_name))
+train_path = Path(join(os.getcwd(), 'results', DATASET_NAME, MODEL_FEATURE, PROJECT, train_name))
 # train_path = get_folder(train_path)
 test_path = Path(join(train_path, 'test'))
 #-------------------------------------train--------------------------------------------------------
@@ -318,42 +271,25 @@ def detect():
         plt.savefig(join(test_path, 'confidence_hist.png'), dpi=200)
     print(f'saved in {test_path}')
 
-#-----------------------------------Split ID/OOD---------------------------------------------------
-# 여기부터 수정안함
-def split_(msps, label, datas, targets, threshold, save=True, analysis=True):
-    # id if higher than threshold, ood if lower
-    ind_idxs = msps >= threshold
-    ood_idxs = msps < threshold
+def analysis():
+    SUBLIST = [str(i).zfill(2) for i in range(1, SUB_NUM+1)]  # '01', '02', '03', ..., '28'datas, targets = load_list_subjects(DATA, 'train', HIGS, LABEL)
+    datas, targets = load_list_subjects(DATA, 'train', SUBLIST, LABEL)
+    datas = scaling(datas, scaler_name=SCALE)
+    datas = deshape(datas, shape_name=SHAPE, chls=CHLS, location=LOCATION)
+    dataset = PreprocessedDataset(datas, targets)
+    loader = DataLoader(dataset, batch_size=BATCH, shuffle=False)
+    _, _, _, _, msps = evaluate_test(model, loader, criterion, device)
 
-    _, total_OOD_ID = np.unique(ind_idxs, return_counts=True)  # False:OOD, True:ID
-    print(f'T:{threshold}\tOOD\tID\ncount{total_OOD_ID} \nratio{np.round(total_OOD_ID / len(msps), 2)}')
+    thresholds = [0.85, 0.90, 0.95, 0.98]
+    for threshold in thresholds:
+        ind_idxs = msps >= threshold
+        ood_idxs = msps < threshold
 
-    datas_ind, targets_ind = datas[ind_idxs], targets[ind_idxs]
-    datas_ood, targets_ood = datas[ood_idxs], targets[ood_idxs]
+        _, total_OOD_ID = np.unique(ind_idxs, return_counts=True)  # False:OOD, True:ID
+        print(f'T:{threshold}\tOOD\tID\ncount{total_OOD_ID} \nratio{np.round(total_OOD_ID / len(msps), 2)}')
 
-    # save data------------------------------------------------------
-    if save:
-        from sklearn.model_selection import train_test_split
-
-        save_foler = join(DATAS, 'IND_OOD')
-        os.makedirs(save_foler, exist_ok=True)
-        # save OOD data
-        np.savez(join(save_foler, f'ood_{label}_{int(threshold * 100)}'), x=datas_ood, y=targets_ood)
-
-        # make ID Dataset  ## train 80 : valid 10 : test 10
-        # X_train, X, Y_train, Y = train_test_split(datas_ind, targets_ind, test_size=0.2, stratify=targets_ind, random_state=random_seed)
-        # X_valid, X_test, Y_valid, Y_test = train_test_split(X, Y, test_size=0.5, stratify=Y, random_state=random_seed)
-        X_train, X, Y_train, Y = train_test_split(datas_ind, targets_ind, test_size=0.2, random_state=random_seed)
-        X_valid, X_test, Y_valid, Y_test = train_test_split(X, Y, test_size=0.5, random_state=random_seed)
-        print(f'ID train: {len(Y_train)} \t ID valid: {len(Y_valid)} \t ID test: {len(Y_test)}\n')
-        # save ID dataset
-        np.savez(join(save_foler, f'ind_{label}_{int(threshold * 100)}_train'), X=X_train, Y=Y_train)
-        np.savez(join(save_foler, f'ind_{label}_{int(threshold * 100)}_valid'), X=X_valid, Y=Y_valid)
-        np.savez(join(save_foler, f'ind_{label}_{int(threshold * 100)}_test'), X=X_test, Y=Y_test)
-        print(f'saved in {save_foler}')
-
-    # Analysis-------------------------------------------------------
-    if analysis:
+        datas_ind, targets_ind = datas[ind_idxs], targets[ind_idxs]
+        datas_ood, targets_ood = datas[ood_idxs], targets[ood_idxs]
         ## plot ID & OOD per subject
         subids, ind_subs = np.unique(targets_ind[:, 1], return_counts=True)
         _, ood_subs = np.unique(targets_ood[:, 1], return_counts=True)
@@ -386,35 +322,8 @@ def split_(msps, label, datas, targets, threshold, save=True, analysis=True):
         plt.tight_layout()
         plt.savefig(join(test_path, f'ID_OOD_class{threshold * 100}.png'), dpi=200)
 
-
-# Load all train data and split into ID and OOD
-def split(save, analysis):
-    SUBLIST = [str(i) for i in range(1, 16)]  # '01', '02', '03', ..., '28'
-    datas, targets = getFromnpz(join(DATAS, DNAME), SUBLIST, out=False, cla='4')
-    datas = make_grid(datas)  # (33264, 4, 9, 9)
-
-    class tmpDataset(Dataset):
-        def __init__(self, X, Y):
-            self.x = torch.tensor(X, dtype=torch.float32)
-            self.y = torch.tensor(Y[:, 0], dtype=torch.int64)
-            self.subID = Y[:, 1]
-
-        def __getitem__(self, idx):
-            return self.x[idx], self.y[idx], self.subID[idx]
-
-        def __len__(self):
-            return self.y.shape[0]
-
-    allset = tmpDataset(datas, targets)
-    allloader = DataLoader(allset, batch_size=BATCH, shuffle=False)
-    _, _, _, _, MSPs = evaluate_test(model, allloader, criterion, device)
-
-    split_(MSPs, LABEL, datas, targets, threshold=0.85, save=save, analysis=analysis)
-    split_(MSPs, LABEL, datas, targets, threshold=0.90, save=save, analysis=analysis)
-    split_(MSPs, LABEL, datas, targets, threshold=0.95, save=save, analysis=analysis)
-    split_(MSPs, LABEL, datas, targets, threshold=0.98, save=save, analysis=analysis)
-
 #--------------------------------------main--------------------------------------------------------
-run_train()
+if not TEST:
+    run_train()
 detect()
-split(save=True, analysis=True)
+analysis()

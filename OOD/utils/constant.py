@@ -1,3 +1,6 @@
+import os
+from os.path import join
+
 GAMEEMO_CHLS = ['AF3', 'AF4', 'F3', 'F4', 'F7', 'F8', 'FC5', 'FC6', 'O1', 'O2', 'P7', 'P8', 'T7', 'T8']  # 14 channels
 GAMEEMO_LOCATION = [['-', '-', '-', '-', '-', '-', '-', '-', '-'],
     ['-', '-', '-', 'AF3', '-', 'AF4', '-', '-', '-'],
@@ -26,6 +29,7 @@ DEAP_LOCATION = [['-', '-', '-', 'FP1', '-', 'FP2', '-', '-', '-'],
                       ['P7', '-', 'P3', '-', 'PZ', '-', 'P4', '-', 'P8'],
                       ['-', '-', '-', 'PO3', '-', 'PO4', '-', '-', '-'],
                       ['-', '-', '-', 'O1', 'OZ', 'O2', '-', '-', '-']]
+DEAP_SUBNUM = 32
 
 
 SEED_CHLS = [
@@ -48,6 +52,7 @@ SEED_LOCATION = [
     ['-', 'PO7', 'PO5', 'PO3', 'POZ', 'PO4', 'PO6', 'PO8', '-'],
     ['-', '-', 'CB1', 'O1', 'OZ', 'O2', 'CB2', '-', '-']
 ]
+SEED_SUBNUM = 15
 
 
 SEED_IV_CHLS = [
@@ -70,3 +75,33 @@ SEED_IV_LOCATION = [
     ['-', 'PO7', 'PO5', 'PO3', 'POZ', 'PO4', 'PO6', 'PO8', '-'],
     ['-', '-', 'CB1', 'O1', 'OZ', 'O2', 'CB2', '-', '-']
 ]
+SEED_IV_SUBNUM = 15
+
+def load_dataset_info(dataset):
+    if dataset == 'GAMEEMO':
+        DATAS = join(DATASETS, 'GAMEEMO_npz', 'Projects')
+        SUB_NUM = GAMEEMO_SUBNUM
+        CHLS = GAMEEMO_CHLS
+        LOCATION = GAMEEMO_LOCATION
+        return DATAS, SUB_NUM, CHLS, LOCATION
+    elif dataset == 'SEED':
+        DATAS = join(os.getcwd(),"datasets", dataset, "npz", "Projects")
+        SUB_NUM = SEED_SUBNUM
+        CHLS = SEED_CHLS
+        LOCATION = SEED_LOCATION
+        return DATAS, SUB_NUM, CHLS, LOCATION
+    elif dataset == 'SEED_IV':
+        DATAS = join(os.getcwd(),"datasets", dataset, "npz", "Projects")
+        SUB_NUM = SEED_IV_SUBNUM
+        CHLS = SEED_IV_CHLS
+        LOCATION = SEED_IV_LOCATION
+        return DATAS, SUB_NUM, CHLS, LOCATION
+    elif dataset == 'DEAP':
+        DATAS = join(os.getcwd(),"datasets", dataset, "npz", "Projects")
+        SUB_NUM = DEAP_SUBNUM
+        CHLS = DEAP_CHLS
+        LOCATION = DEAP_LOCATION
+        return DATAS, SUB_NUM, CHLS, LOCATION
+    else:
+        print("Unknown Dataset")
+        exit(1)

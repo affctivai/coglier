@@ -16,31 +16,15 @@ from utils.constant import *
 from utils.transform import scaling, deshape
 from sklearn.model_selection import train_test_split
 from utils.dataset import load_list_subjects, PreprocessedDataset
-from utils.model import CCNN, TSCeption, EEGNet, DGCNN
+from utils.model import get_model
 from utils.scheduler import CosineAnnealingWarmUpRestarts
 from utils.tools import MyScheduler, plot_scheduler, epoch_time, plot_train_result
 from utils.tools import plot_confusion_matrix, get_roc_auc_score
+from utils.tools import seed_everything, get_folder
 from sklearn.metrics import classification_report
 
-def seed_everything(seed):
-    random.seed(seed)
-    np.random.seed(seed)
-    os.environ["PYTHONHASHSEED"] = str(seed)
-    torch.manual_seed(seed)
-    torch.cuda.manual_seed(seed)
-    torch.backends.cudnn.deterministic = True
-    torch.backends.cudnn.benchmark = False
 random_seed = 42
 seed_everything(random_seed)
-
-def get_folder(path):
-    if path.exists():
-        for n in range(2, 100):
-            p = f'{path}{n}'
-            if not exists(p):
-                break
-        path = Path(p)
-    return path
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--datasets", default="/mnt/data/research_EG", help='After 0.0 preprocessing.py')
@@ -64,29 +48,7 @@ DROPOUT = args.dropout
 
 PROJECT = 'Baseline'
 
-if DATASET_NAME == 'GAMEEMO':
-    DATAS = join(DATASETS, 'GAMEEMO_npz', 'Projects')
-    SUB_NUM = GAMEEMO_SUBNUM
-    CHLS = GAMEEMO_CHLS
-    LOCATION = GAMEEMO_LOCATION
-elif DATASET_NAME == 'SEED':
-    DATAS = join(os.getcwd(),"datasets", DATASET_NAME, "npz", "Projects")
-    # LABEL = '4' # 4, v, a
-    # EPOCH = 1
-    # BATCH = 128
-elif DATASET_NAME == 'SEED_IV':
-    DATAS = join(os.getcwd(),"datasets", DATASET_NAME, "npz", "Projects")
-    # LABEL = '4' # 4, v, a
-    # EPOCH = 100
-    # BATCH = 128
-elif DATASET_NAME == 'DEAP':
-    DATAS = join(os.getcwd(),"datasets", DATASET_NAME, "npz", "Projects")
-    # LABEL = 'v' # 4, v, a
-    # EPOCH = 1
-    # BATCH = 64
-else:
-    print("Unknown Dataset")
-    exit(1)
+DATAS, SUB_NUM, CHLS, LOCATION = load_dataset_info(DATASET_NAME)
 
 if MODEL_NAME == 'CCNN': SHAPE = 'grid'
 elif MODEL_NAME == 'TSC' or MODEL_NAME == 'EEGNet':
@@ -130,25 +92,7 @@ def run_train(model_name):
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
     # Model
-    if model_name == 'CCNN':
-        model = CCNN(num_classes=len(labels_name), dropout=DROPOUT)
-        max_lr = 1e-4
-        # EPOCH = 100
-    elif model_name == 'TSC':
-        model = TSCeption(num_electrodes=trainset.x.shape[2], num_classes=len(labels_name), sampling_rate=128, dropout=DROPOUT)
-        max_lr = 1e-3
-        # EPOCH = 200
-    elif model_name == 'EEGNet':
-        model = EEGNet(chunk_size=trainset.x.shape[3], num_electrodes=trainset.x.shape[2], num_classes=len(labels_name), dropout=DROPOUT)
-        max_lr = 1e-3
-        # EPOCH = 200
-    elif model_name == 'DGCNN':
-        model = DGCNN(in_channels=trainset.x.shape[2], num_electrodes=trainset.x.shape[1], num_classes=len(labels_name))
-        max_lr = 1e-3
-        # EPOCH = 200
-
-    model = model.to(device)
-    # print(summary(model, trainset.x.shape[1:]))
+    model, max_lr = get_model(model_name, validset.x.shape, len(labels_name), device)
 
     STEP = len(trainloader)
     STEPS = EPOCH * STEP
@@ -257,15 +201,7 @@ def run_test(model_name, train_path):
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
     # Model (load parameters)
-    if model_name == 'CCNN':
-        model = CCNN(num_classes=len(labels_name))
-    elif model_name == 'TSC':
-        model = TSCeption(num_electrodes=testset.x.shape[2], num_classes=len(labels_name), sampling_rate=128)
-    elif model_name == 'EEGNet':
-        model = EEGNet(chunk_size=testset.x.shape[3], num_electrodes=testset.x.shape[2], num_classes=len(labels_name))
-    elif model_name == 'DGCNN':
-        model = DGCNN(in_channels=testset.x.shape[2], num_electrodes=testset.x.shape[1], num_classes=len(labels_name))
-    model = model.to(device)
+    model, max_lr = get_model(model_name, testset.x.shape, len(labels_name), device)
     model.load_state_dict(torch.load(join(train_path, 'best.pt')))
 
     criterion = nn.CrossEntropyLoss()
@@ -330,7 +266,11 @@ def run_test(model_name, train_path):
 
 #---------------------------------------main-------------------------------------------------------
 # save result in train_path
-train_path = Path(join(os.getcwd(), 'results', DATASET_NAME, PROJECT, train_name))
+if MODEL_NAME == 'EEGNet' or MODEL_NAME == 'TSC':
+    MODEL_FEATURE = MODEL_NAME
+else:
+    MODEL_FEATURE = '_'.join([MODEL_NAME, FEATURE])
+train_path = Path(join(os.getcwd(), 'results', DATASET_NAME, MODEL_FEATURE, PROJECT, train_name))
 train_path = get_folder(train_path)
 
 test_path = Path(join(train_path, 'test'))

@@ -1,4 +1,6 @@
 import os
+from os.path import join, exists
+import random
 import numpy as np
 import torch
 import torch.nn.functional as F
@@ -8,7 +10,7 @@ import matplotlib.pyplot as plt
 from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
 from sklearn.metrics import roc_curve, auc, precision_recall_curve, roc_auc_score
 from sklearn.preprocessing import OneHotEncoder
-
+from pathlib import Path
 
 def getFromnpz_(dir, sub, out=True, cla='v'):
     sub += '.npz'
@@ -219,5 +221,22 @@ class EarlyStopping:
         torch.save(model.state_dict(), self.path)
         self.val_loss_min = val_loss
 
+#------------------------------------------- Utility ----------------------------------------------
 
-        
+def seed_everything(seed):
+    random.seed(seed)
+    np.random.seed(seed)
+    os.environ["PYTHONHASHSEED"] = str(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed(seed)
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
+
+def get_folder(path):
+    if path.exists():
+        for n in range(2, 100):
+            p = f'{path}{n}'
+            if not exists(p):
+                break
+        path = Path(p)
+    return path
