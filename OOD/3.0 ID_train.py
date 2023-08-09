@@ -132,7 +132,7 @@ def run_train(model_name):
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
     # Model
-    model, max_lr = get_model(model_name, validset.x.shape, len(labels_name), device)
+    model, max_lr = get_model(MODEL_NAME, validset.x.shape, len(labels_name), device)
 
     STEP = len(trainloader)
     STEPS = EPOCH * STEP
@@ -241,7 +241,7 @@ def run_test(model_name, train_path):
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
     # Model (load parameters)
-    model, max_lr = get_model(model_name, testset.x.shape, len(labels_name), device)
+    model, max_lr = get_model(MODEL_NAME, testset.x.shape, len(labels_name), device)
     model.load_state_dict(torch.load(join(train_path, 'best.pt')))
 
     criterion = nn.CrossEntropyLoss()

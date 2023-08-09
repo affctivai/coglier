@@ -127,7 +127,7 @@ validloader = DataLoader(validset, batch_size=BATCH, shuffle=False)
 labels_name = np.unique(validset.y) + 1
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-model, max_lr = get_model(model_name, testset.x.shape, len(labels_name), device)
+model, max_lr = get_model(MODEL_NAME, testset.x.shape, len(labels_name), device)
 
 STEP = len(trainloader)
 STEPS = EPOCH * STEP

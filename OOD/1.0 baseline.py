@@ -201,7 +201,7 @@ def run_test(model_name, train_path):
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
     # Model (load parameters)
-    model = get_model(model_name, testset.x.shape, len(labels_name), device)
+    model, max_lr = get_model(model_name, testset.x.shape, len(labels_name), device)
     model.load_state_dict(torch.load(join(train_path, 'best.pt')))
 
     criterion = nn.CrossEntropyLoss()

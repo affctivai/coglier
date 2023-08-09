@@ -90,7 +90,7 @@ labels_name = validset.label.tolist()
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 # Model
-model, max_lr = get_model(model_name, testset.x.shape, len(labels_name), device)
+model, max_lr = get_model(MODEL_NAME, validset.x.shape, len(labels_name), device)
 # print(summary(model, trainset.x.shape[1:]))
 
 STEP = len(trainloader)
