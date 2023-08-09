@@ -37,6 +37,7 @@ parser.add_argument("--feature", dest="feature", action="store", default="DE", h
 parser.add_argument('--batch', type=int, default = 64)
 parser.add_argument('--epoch', type=int, default = 3)
 parser.add_argument('--project_name', type=str, default = 'Subdepend')  # save result
+parser.add_argument('--dropout', dest="dropout", type=float, default = 0.5)
 args = parser.parse_args()
 
 DATASETS = args.datasets
@@ -48,6 +49,7 @@ FEATURE = args.feature
 BATCH = args.batch
 EPOCH = args.epoch
 PROJECT = args.project_name
+DROPOUT = args.dropout
 
 DATAS, SUB_NUM, CHLS, LOCATION = load_dataset_info(DATASET_NAME)
 
