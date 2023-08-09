@@ -16,7 +16,7 @@ from utils.constant import *
 from utils.transform import scaling, deshape
 from sklearn.model_selection import train_test_split
 from utils.dataset import load_per_subject, PreprocessedDataset_
-from utils.model import get_model
+from utils.model import get_model, get_model_with_dropout
 from utils.scheduler import CosineAnnealingWarmUpRestarts
 from utils.tools import plot_scheduler, epoch_time, plot_train_result
 from utils.tools import plot_confusion_matrix, get_roc_auc_score
@@ -90,7 +90,7 @@ labels_name = validset.label.tolist()
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 # Model
-model, max_lr = get_model(MODEL_NAME, validset.x.shape, len(labels_name), device)
+model, max_lr = get_model_with_dropout(MODEL_NAME, validset.x.shape, len(labels_name), device, DROPOUT)
 # print(summary(model, trainset.x.shape[1:]))
 
 STEP = len(trainloader)

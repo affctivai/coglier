@@ -29,7 +29,7 @@ URL: https://ieeexplore.ieee.org/abstract/document/8320798
 Related Project: https://github.com/xueyunlong12589/DGCNN
 '''
 
-def get_model(model_name, data_x_shape, num_classes, device, dropout):
+def get_model_with_dropout(model_name, data_x_shape, num_classes, device, dropout):
     if model_name == 'CCNN':
         model = CCNN(num_classes=num_classes, dropout=dropout)
         max_lr = 1e-4
@@ -51,7 +51,7 @@ def get_model(model_name, data_x_shape, num_classes, device, dropout):
         exti(1)
 
 def get_model(model_name, data_x_shape, num_classes, device):
-    return get_model(model_name, data_x_shape, num_classes, device, 0.5)
+    return get_model_with_dropout(model_name, data_x_shape, num_classes, device, 0.5)
     
 
 # ------------------------------------------LSTM----------------------------------------------
