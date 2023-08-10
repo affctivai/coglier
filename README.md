@@ -43,10 +43,11 @@ Subject-Independent / Subject-dependent
   - DGCNN : https://ieeexplore.ieee.org/abstract/document/8320798
 
 - hyperparameter
-    |        | CCNN   | TSCeption| EEGNet | DGCNN |
-    | ---    | :----: | :-------:| :----: | :----: |
-    | epoch  | 100    |  200     | 200    |      |
-    | max_lr | 1e-4   | 1e-3     | 1e-3   |      |
+    |         | CCNN   | TSCeption| EEGNet | DGCNN  |
+    | ---     | :----: | :-------:| :----: | :----: |
+    | epoch   | 100    |    200   |  200   |   200  |
+    | max_lr  | 1e-4   |   1e-3   |  1e-3  |  1e-3  |
+    | dropout | 0.5    |    0     |   0    |    0   |
 
 
 - criterion = `torch.nn.CrossEntropyLoss()`
