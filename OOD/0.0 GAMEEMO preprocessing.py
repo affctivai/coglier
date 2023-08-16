@@ -166,40 +166,38 @@ def save_datas_seg_PSD(src, window, stride, emotions, channels ,sublist, save_pa
 
 # -----------------------------------------main---------------------------------------------------
 parser = argparse.ArgumentParser()
-parser.add_argument("--src_dir", type=str, default="/mnt/data/GAMEEMO") # source data folder location
-parser.add_argument("--save_dir", type=str, default="/mnt/data/research_EG") # path to save preprocessed data(.npz format)
+parser.add_argument("--src_dir", type=str, default="/mnt/data") # source data folder location
 parser.add_argument("--window", type=int, default=256)
 parser.add_argument("--stride", type=int, default=128)
 parser.add_argument("--method", type=str, default="seg", help='noseg, seg, PSD, DE')
 args = parser.parse_args()
 
 SRC = args.src_dir
-SAVE = args.save_dir
 WINDOW = args.window
 STRIDE = args.stride
 METHOD = args.method
 
 SUBLIST = [str(i).zfill(2) for i in range(1, GAMEEMO_SUBNUM + 1)] # '01', '02', '03', ...
 EMOS = ['G1', 'G2', 'G3', 'G4'] # 'boring', 'calm', 'horror', 'funny'
-save_dir = join(args.save_dir, 'GAMEEMO_npz', 'Preprocessed')
+src_dir = join(SRC, 'GAMEEMO')
+save_dir = join(os.getcwd(), 'datasets', 'GAMEEMO', 'npz', 'Preprocessed')
 
 if METHOD == 'noseg':
-    save_datas_noseg(SRC, EMOS, GAMEEMO_CHLS, SUBLIST, join(save_dir, 'noseg'))
+    save_datas_noseg(src_dir, EMOS, GAMEEMO_CHLS, SUBLIST, join(save_dir, 'noseg'))
 
 elif METHOD == 'seg':
-    save_datas_seg(SRC, WINDOW, STRIDE, EMOS, GAMEEMO_CHLS, SUBLIST, join(save_dir, 'seg'))
+    save_datas_seg(src_dir, WINDOW, STRIDE, EMOS, GAMEEMO_CHLS, SUBLIST, join(save_dir, 'seg'))
 
 elif METHOD == 'PSD':
-    save_datas_seg_PSD(SRC, WINDOW, STRIDE, EMOS, GAMEEMO_CHLS, SUBLIST, join(save_dir, 'seg_PSD'))
+    save_datas_seg_PSD(src_dir, WINDOW, STRIDE, EMOS, GAMEEMO_CHLS, SUBLIST, join(save_dir, 'seg_PSD'))
 
 elif METHOD == 'DE': # DE calculation takes a time. be careful
-    save_datas_seg_DE(SRC, WINDOW, STRIDE, EMOS, GAMEEMO_CHLS, SUBLIST, join(save_dir, 'seg_DE'))
+    save_datas_seg_DE(src_dir, WINDOW, STRIDE, EMOS, GAMEEMO_CHLS, SUBLIST, join(save_dir, 'seg_DE'))
 
 # -----------------------------------------check---------------------------------------------------
 # Save the bar graph of the number of labels per class
+from utils.tools import getFromnpz, plot_VA
 def saveBarGraph(window, stride):
-    from utils.tools import getFromnpz, plot_VA
-
     datas_v, targets_v = getFromnpz(join(save_dir, 'seg'), SUBLIST, out=False, cla='v')
     datas_a, targets_a = getFromnpz(join(save_dir, 'seg'), SUBLIST, out=False, cla='a')
     vals, count_v = np.unique(targets_v[:, 0], return_counts=True)
@@ -215,6 +213,6 @@ def saveBarGraph(window, stride):
     # print(f'Num of data per subject {subIDs} \t {countss_v}') # subIDs
 
     file_name = f'bar_graph_w{window}_s{stride}'
-    plot_VA(vals, count_v, aros, count_a, path=join(args.save_dir,'GAMEEMO_npz', file_name))
+    plot_VA(vals, count_v, aros, count_a, path=join(os.getcwd(), 'datasets', 'GAMEEMO', 'npz', 'Preprocessed', file_name))
 
-# saveBarGraph(WINDOW, STRIDE)
+saveBarGraph(WINDOW, STRIDE)

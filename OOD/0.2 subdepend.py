@@ -9,7 +9,6 @@ import argparse
 from utils.constant import *
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--datasets", default="/mnt/data/research_EG", help='After 0.0 preprocessing.py')
 parser.add_argument("--dataset", dest="dataset", action="store", default="GAMEEMO", help='GAMEEMO, SEED, SEED_IV, DEAP')
 parser.add_argument("--label", type=str, default='v', help='v, a :GAMEEMO/DEAP')
 parser.add_argument("--model", dest="model", action="store", default="CCNN", help='CCNN, TSC, EEGNet, DGCNN')
@@ -20,7 +19,6 @@ parser.add_argument('--project_name', type=str, default = 'Subdepend')  # save r
 parser.add_argument("--test", dest="test", action="store_true")
 args = parser.parse_args()
 
-DATASETS = args.datasets
 DATASET_NAME = args.dataset
 LABEL = args.label
 MODEL_NAME = args.model
@@ -31,29 +29,25 @@ PROJECT = args.project_name
 TEST = args.test
 args = parser.parse_args()
 
-
 DATAS, SUB_NUM, CHLS, LOCATION = load_dataset_info(DATASET_NAME)
 
 if LABEL == 'a':    train_name = 'arousal'
 elif LABEL == 'v':  train_name = 'valence'
 else:               train_name = 'emotion'
 
-
 SUBLIST = [str(i).zfill(2) for i in range(1, SUB_NUM+1)] # '01', '02', '03', ...
 
 def run(sublist):
     for sub in sublist:
         print(sub)
-        subprocess.run(f'{sys.executable} subdepend.py --datasets={DATASETS} --dataset={DATASET_NAME} --subID={sub} '
+        subprocess.run(f'{sys.executable} subdepend.py --dataset={DATASET_NAME} --subID={sub} '
                        f'--label={LABEL} --model={MODEL_NAME} --feature={FEATURE} --batch={BATCH} --epoch={EPOCH} '
                        f'--project_name={PROJECT}', shell=True)
 
 def save_results(sublist):
     test_results = dict()
-    if MODEL_NAME == 'EEGNet' or MODEL_NAME == 'TSC':
-        MODEL_FEATURE = MODEL_NAME
-    else:
-        MODEL_FEATURE = '_'.join([MODEL_NAME, FEATURE])
+    if MODEL_NAME == 'EEGNet' or MODEL_NAME == 'TSC': MODEL_FEATURE = MODEL_NAME
+    else: MODEL_FEATURE = '_'.join([MODEL_NAME, FEATURE])
     project_path = train_path = Path(join(os.getcwd(), 'results', DATASET_NAME, MODEL_FEATURE, PROJECT))
     for sub in sublist:
         file = open(join(project_path, sub, train_name, 'test.txt'), 'r')
