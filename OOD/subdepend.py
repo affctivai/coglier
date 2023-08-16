@@ -1,7 +1,6 @@
 import os
 from os.path import join
 import time
-import random
 from pathlib import Path
 import numpy as np
 import argparse
@@ -21,14 +20,11 @@ from utils.scheduler import CosineAnnealingWarmUpRestarts
 from utils.tools import plot_scheduler, epoch_time, plot_train_result
 from utils.tools import plot_confusion_matrix, get_roc_auc_score
 from utils.tools import seed_everything, get_folder
-import math
 
 random_seed = 42
 seed_everything(random_seed)
 
-#-----------------------------------------------------------------------------------------
 parser = argparse.ArgumentParser()
-parser.add_argument("--datasets", default="/mnt/data/research_EG", help='After 0.0 preprocessing.py')
 parser.add_argument("--dataset", dest="dataset", action="store", default="GAMEEMO", help='GAMEEMO, SEED, SEED_IV, DEAP')
 parser.add_argument('--subID', type=str, default = '01')
 parser.add_argument("--label", type=str, default='v', help='v, a :GAMEEMO/DEAP')
@@ -40,7 +36,6 @@ parser.add_argument('--project_name', type=str, default = 'Subdepend')  # save r
 parser.add_argument('--dropout', dest="dropout", type=float, default = 0.5)
 args = parser.parse_args()
 
-DATASETS = args.datasets
 DATASET_NAME = args.dataset
 SUB = args.subID
 LABEL = args.label
@@ -68,7 +63,11 @@ elif LABEL == 'v':  train_name = 'valence'
 else:               train_name = 'emotion'
 
 DATA = join(DATAS, FEATURE)
-# SUBLIST = [str(i).zfill(2) for i in range(1, SUB_NUM+1)] # '01', '02', '03', ...
+
+if MODEL_NAME == 'EEGNet' or MODEL_NAME == 'TSC': MODEL_FEATURE = MODEL_NAME
+else: MODEL_FEATURE = '_'.join([MODEL_NAME, FEATURE])
+
+train_path = Path(join(os.getcwd(), 'results', DATASET_NAME, MODEL_FEATURE, PROJECT, SUB, train_name))
 
 #-------------------------------------------------train---------------------------------------------------------------
 # Load train data
@@ -135,7 +134,7 @@ def evaluate(model, loader, criterion, device):
                 acc = y.eq(y_pred.argmax(1)).sum() / y.shape[0]
             epoch_loss += loss.item()
             epoch_acc += acc.item()
-    return epoch_loss/len(loader), epoch_acc/len(loader)
+    return epoch_loss / len(loader), epoch_acc / len(loader)
 
 
 lrs = []
@@ -144,12 +143,8 @@ valid_losses, valid_accs = [],[]
 best_valid_loss = float('inf')
 scaler = torch.cuda.amp.GradScaler()
 # ----------------------------------------run-------------------------------------------------------
-if MODEL_NAME == 'EEGNet' or MODEL_NAME == 'TSC':
-    MODEL_FEATURE = MODEL_NAME
-else:
-    MODEL_FEATURE = '_'.join([MODEL_NAME, FEATURE])
-train_path = Path(join(os.getcwd(), 'results', DATASET_NAME, MODEL_FEATURE, PROJECT, SUB, train_name))
 train_path.mkdir(parents=True, exist_ok=True)
+
 with open(join(train_path, 'train.txt'), 'w') as file:
     file.write(f'{train_name} {labels_name} train:{tuple(trainset.x.shape)} valid:{tuple(validset.x.shape)}\n'
                f'Epoch {EPOCH}  Train  Loss/Acc\tValid  Loss/Acc\n')
@@ -178,8 +173,6 @@ plot_train_result(train_losses, valid_losses, train_accs, valid_accs, EPOCH, siz
 print(f"model weights saved in '{join(train_path,'best.pt')}'")
 
 #--------------------------------------test-------------------------------------------------------
-model.load_state_dict(torch.load(join(train_path, 'best.pt')))
-
 # Load test data
 datas, targets = load_per_subject(DATA, 'test', SUB, LABEL)
 # online transform
@@ -189,26 +182,29 @@ testset = PreprocessedDataset_(datas, targets)
 print(f'testset: {testset.x.shape}')
 testloader = DataLoader(testset, batch_size=BATCH, shuffle=False)
 
-criterion = nn.CrossEntropyLoss()
-criterion = criterion.to(device)
+model.load_state_dict(torch.load(join(train_path, 'best.pt')))
 
 def evaluate_test(model, loader, criterion, device):
-    losss, accs = [], []
+    losss, accs = 0, 0
     labels, preds = [], []
     model.eval()
     with torch.no_grad():
         for (x, y) in loader:
             x = x.to(device);   y = y.to(device)
+            
             y_pred = model(x)
+            
             loss = criterion(y_pred, y)
             acc = y.eq(y_pred.argmax(1)).sum() / y.shape[0]
-            losss.append(loss.item())
-            accs.append(acc.item())
+
+            losss += loss.item()
+            accs += acc.item()
+            
             labels.append(y.cpu().int())
             preds.append(y_pred.argmax(1).cpu())
     labels = torch.cat(labels, dim=0)
     preds = torch.cat(preds, dim=0)
-    return np.mean(losss), np.mean(accs), labels, preds
+    return losss / len(loader), accs / len(loader), labels, preds
 
 with open(join(train_path, 'test.txt'), 'w') as file:
     test_loss, test_acc, labels, preds  = evaluate_test(model, testloader, criterion, device)

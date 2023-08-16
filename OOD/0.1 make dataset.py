@@ -10,17 +10,15 @@ from utils.tools import getFromnpz_, seed_everything
 
 # -----------------------------------------Setting---------------------------------------------------
 parser = argparse.ArgumentParser()
-parser.add_argument("--datasets", default="/mnt/data/research_EG", help='After 0.0 preprocessing.py') 
 parser.add_argument("--dataset", dest="dataset", action="store", default="GAMEEMO", help='GAMEEMO, SEED, SEED_IV, DEAP')
 parser.add_argument("--label", dest="label", action="store", default="v", help='v, a :GAMEEMO/DEAP')
 args = parser.parse_args()
 
-DATASETS = args.datasets
 DATASET_NAME = args.dataset
 LABEL = args.label
 
 if DATASET_NAME == 'GAMEEMO':
-    DATAS = join(DATASETS, 'GAMEEMO_npz')
+    DATAS = join(os.getcwd(),"datasets", "GAMEEMO", "npz")
     SUB_NUM = GAMEEMO_SUBNUM
 elif DATASET_NAME == 'SEED':
     DATAS = join(os.getcwd(),"datasets", "SEED", "npz")
