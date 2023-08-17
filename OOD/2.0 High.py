@@ -76,11 +76,15 @@ def get_ID():
     print('Read subject-dependent result from: ', subdepend_result_path)
     result = pd.read_excel(join(subdepend_result_path, f'{train_name}_results.xlsx'))
     col = result[COLUMN].to_numpy()
-    rank = np.argsort(col)[::-1] + 1
-    col = np.sort(col)[::-1]
+    if COLUMN != 'test_loss':
+        rank = np.argsort(col)[::-1] + 1
+        col = np.sort(col)[::-1]
+    else:
+        rank = np.argsort(col) + 1
+        col = np.sort(col)
     print('SUB ID: ', rank)
     print(f'{COLUMN}:', col)
-
+    
     ranks = [str(sub).zfill(2) for sub in rank]
 
     highs = ranks[: SUB_NUM-CUT]
@@ -98,7 +102,7 @@ datas = scaling(datas, scaler_name=SCALE)
 datas = deshape(datas, shape_name=SHAPE, chls=CHLS, location=LOCATION)
 
 # Split into train, valid, test
-X_train, X, Y_train, Y = train_test_split(datas, targets, test_size=0.2, stratify=targets, random_state=random_seed)
+X_train, X, Y_train, Y = train_test_split(datas, targets, test_size=0.1, stratify=targets, random_state=random_seed)
 X_valid, X_test, Y_valid, Y_test = train_test_split(X, Y, test_size=0.5, stratify=Y, random_state=random_seed)
 
 trainset = PreprocessedDataset(X_train, Y_train)
@@ -253,10 +257,9 @@ def detect(train_path):
         losss, accs, labels, preds, msps_higs, _ = evaluate_test(model, testloader, criterion, device)
         _,        _,      _,     _, msps_lows, _ = evaluate_test(model, lowsloader, criterion, device)
         
-        high_loss, high_acc = torch.mean(losss, dtype=torch.float), accs.sum().item() / len(accs)
+        high_loss, high_acc = torch.mean(losss.float()), torch.mean(accs.float())
  
-        log = (f'high_loss: {high_loss:.3f}\thigh_acc: {high_acc*100:6.2f}%\t'
-               f'roc_auc_score: {get_roc_auc_score(labels, preds)}\n')
+        log = (f'high_loss: {high_loss:.3f}\thigh_acc: {high_acc*100:6.2f}%\troc_auc_score: {get_roc_auc_score(labels, preds)}\n')
 
         log += '----------OOD detection performance----------\n'
         y_true = torch.cat([torch.ones(len(testset)), torch.zeros(len(lowsset))])

@@ -1,6 +1,5 @@
 import os
 from os.path import join
-import random
 import numpy as np
 import argparse
 
@@ -22,13 +21,13 @@ if DATASET_NAME == 'GAMEEMO':
     SUB_NUM = GAMEEMO_SUBNUM
 elif DATASET_NAME == 'SEED':
     DATAS = join(os.getcwd(),"datasets", "SEED", "npz")
-    SUB_NUM = 15
+    SUB_NUM = SEED_SUBNUM
 elif DATASET_NAME == 'SEED_IV':
     DATAS = join(os.getcwd(),"datasets", "SEED_IV", "npz")
-    SUB_NUM = 15
+    SUB_NUM = SEED_IV_SUBNUM
 elif DATASET_NAME == 'DEAP':
     DATAS = join(os.getcwd(),"datasets", "DEAP", "npz")
-    SUB_NUM = 32
+    SUB_NUM = DEAP_SUBNUM
 else:
     print("Unknown Dataset")
     exit(1)
