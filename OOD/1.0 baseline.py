@@ -35,7 +35,6 @@ parser.add_argument("--epoch", dest="epoch", type=int, action="store", default=1
 parser.add_argument("--dropout", dest="dropout", type=float, action="store", default=0, help='0, 0.2, 0.3, 0.5')
 
 parser.add_argument("--test", dest="test", action="store_true", help='Whether to train data')
-parser.add_argument("--base", dest="base", action="store_true", help='Baseline or ID')
 parser.add_argument("--threshold", dest="threshold", type=float, action="store", default=0, help='0.98, 0.95, 0.90, 0.85')
 parser.add_argument("--topk", dest="topk", type=int, action="store", default=2)
 args = parser.parse_args()
@@ -48,12 +47,10 @@ BATCH = args.batch
 EPOCH = args.epoch
 DROPOUT = args.dropout
 TEST = args.test
-BASE = args.base
 THRESHOLD = args.threshold
 TOPK = args.topk
 
-if BASE: PROJECT = 'Baseline'
-else: PROJECT = f'Ind_{int(THRESHOLD*100)}'
+PROJECT = f'Base_remove{int(THRESHOLD*100)}'
 
 if MODEL_NAME == 'CCNN': SHAPE = 'grid'
 elif MODEL_NAME == 'TSC' or MODEL_NAME == 'EEGNet': SHAPE = 'expand'; FEATURE = 'raw'
@@ -74,7 +71,7 @@ DATA = join(DATAS, FEATURE)
 train_path = Path(join(os.getcwd(), 'results', DATASET_NAME, MODEL_FEATURE, PROJECT, train_name))
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-def remove_ood(datas, targets):
+def remove_ood(datas, targets, threshold):
     dataset = PreprocessedDataset(datas, targets)
     loader = DataLoader(dataset, batch_size=BATCH, shuffle=False)
     ood_detector_path = Path(join(os.getcwd(), 'results', DATASET_NAME, MODEL_FEATURE, 'High', train_name))
@@ -93,11 +90,9 @@ def remove_ood(datas, targets):
             msp, maxidx = msp.max(1)
             msps.append(msp.cpu())
     msps = torch.cat(msps, dim=0)
-    ind_idxs = msps >= THRESHOLD
-    ood_idxs = msps < THRESHOLD
-
+    ind_idxs = msps >= threshold
     _, total_OOD_ID = np.unique(ind_idxs, return_counts=True)  # False:OOD, True:ID
-    print(f'T:{THRESHOLD}\tOOD\tID\ncount{total_OOD_ID} \nratio{np.round(total_OOD_ID / len(msps), 2)}')
+    print(f'T:{threshold}\tOOD\tID\ncount{total_OOD_ID} \nratio{np.round(total_OOD_ID / len(msps), 2)}')
 
     datas_ind, targets_ind = datas[ind_idxs], targets[ind_idxs]
     #datas_ood, targets_ood = datas[ood_idxs], targets[ood_idxs]
@@ -107,19 +102,20 @@ def remove_ood(datas, targets):
 def run_train():
     print(f'{DATASET_NAME} {MODEL_NAME} {FEATURE} (shape:{SHAPE},scale:{SCALE}) LABEL:{train_name}')
 
-    # Load train dat
+    # Load train data
     datas, targets = load_list_subjects(DATA, 'train', SUBLIST, LABEL)
 
     # online transform
     datas = scaling(datas, scaler_name=SCALE)
     datas = deshape(datas, shape_name=SHAPE, chls=CHLS, location=LOCATION)
     
-    if not BASE: # remove OOD datas
-        datas, targets = remove_ood(datas, targets)
+    # remove OOD datas
+    if THRESHOLD > 0:
+        datas, targets = remove_ood(datas, targets, THRESHOLD)
 
     # Split into train, valid
     X_train, X_valid, Y_train, Y_valid = train_test_split(datas, targets, test_size=0.1, stratify=targets, random_state=random_seed)
-
+    
     trainset = PreprocessedDataset(X_train, Y_train)
     validset = PreprocessedDataset(X_valid, Y_valid)
     print(f'trainset: {trainset.x.shape} \t validset: {validset.x.shape}')
@@ -224,16 +220,19 @@ def run_test(train_path):
     if not exists(train_path):
         raise FileNotFoundError(f"File not found: {train_path}, Set the train weight path properly.")
     
-    test_path = Path(join(train_path, f'test_{int(THRESHOLD*100)}'))
+    test_path = Path(join(train_path, 'test'))
     test_path = get_folder(test_path)
     
     # Load test data
     datas, targets = load_list_subjects(DATA, 'test', SUBLIST, LABEL)
-
     # online transform
     datas = scaling(datas, scaler_name=SCALE)
     datas = deshape(datas, shape_name=SHAPE, chls=CHLS, location=LOCATION)
 
+    # remove OOD datas
+    if THRESHOLD > 0:
+        datas, targets = remove_ood(datas, targets, THRESHOLD)
+    
     testset = PreprocessedDataset(datas, targets)
     print(f'testset: {testset.x.shape}')
 
@@ -291,10 +290,11 @@ def run_test(train_path):
         losss, accs_1, accs_k, labels, preds, msps, subIDs  = evaluate_test(model, testloader, criterion, device, TOPK)
         
         # ----------OOD detection----------
-        ind_idxs = msps >= THRESHOLD
+        LAST_T = 0
+        ind_idxs = msps >= LAST_T
         n_ind = ind_idxs.sum().item()
         n_ood = len(ind_idxs) - n_ind
-        log = f'T:{THRESHOLD}\tID/OOD count|ratio : {n_ind},{n_ood}|{n_ind/len(ind_idxs):.2f},{n_ood/len(ind_idxs):.2f}\n'
+        log = f'T:{LAST_T}\tID/OOD count|ratio : {n_ind},{n_ood}|{n_ind/len(ind_idxs):.2f},{n_ood/len(ind_idxs):.2f}\n'
         
         corrects = accs_1
         losss, accs_1, accs_k = losss[ind_idxs], accs_1[ind_idxs], accs_k[ind_idxs]
