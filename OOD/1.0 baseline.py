@@ -290,35 +290,24 @@ def run_test(train_path):
         losss, accs_1, accs_k, labels, preds, msps, subIDs  = evaluate_test(model, testloader, criterion, device, TOPK)
         
         # ----------OOD detection----------
-        LAST_T = 0
-        ind_idxs = msps >= LAST_T
-        n_ind = ind_idxs.sum().item()
-        n_ood = len(ind_idxs) - n_ind
-        log = f'T:{LAST_T}\tID/OOD count|ratio : {n_ind},{n_ood}|{n_ind/len(ind_idxs):.2f},{n_ood/len(ind_idxs):.2f}\n'
-        
         corrects = accs_1
-        losss, accs_1, accs_k = losss[ind_idxs], accs_1[ind_idxs], accs_k[ind_idxs]
-        labels, preds = labels[ind_idxs], preds[ind_idxs]
         
         test_loss = torch.mean(losss.float()).item()
         test_acc_1, test_acc_k = torch.mean(accs_1.float()).item(), torch.mean(accs_k.float()).item()
 
-        log += f'test_loss: {test_loss:.3f}\ttest_acc_1: {test_acc_1*100:.2f}%\ttest_acc_{TOPK}: {test_acc_k*100:.2f}%\t'
+        log = f'test_loss: {test_loss:.3f}\ttest_acc_1: {test_acc_1*100:.2f}%\ttest_acc_{TOPK}: {test_acc_k*100:.2f}%\t'
         log += f'roc_auc_score: {get_roc_auc_score(labels, preds)}\n'
         log += classification_report(labels, preds)
         
         log += f'\n-----Accuracy by subject-----'        
         n_tests     = torch.bincount(subIDs)[1:]
-        n_inds       = torch.bincount(subIDs, ind_idxs).int()[1:]
-        n_corrects  = torch.bincount(subIDs, torch.logical_and(ind_idxs, corrects)).int()[1:]
+        n_corrects  = torch.bincount(subIDs, corrects).int()[1:]
 
         unique_ids = np.unique(testset.subID)
-        log += f'\nSubID\tacc\tn_correct\tn_ind\tn_ood\tn_test\tood_ratio\n'
-        for sub, n_test, n_ind, n_corr in zip(unique_ids, n_tests, n_inds, n_corrects):
-            acc = (n_corr / n_ind).item()
-            n_ood = (n_test - n_ind).item()
-            log += (f'{sub:02d}\t{acc:.2f}\t{n_corr.item():3d}\t{n_ind:3d}\t{n_ood:3d}\t'
-                    f'{n_test.item():3d}\t{(n_ood / n_test).item():.2f}\n')
+        log += f'\nSubID\tacc\tn_correct\tn_test\n'
+        for sub, n_test, n_corr in zip(unique_ids, n_tests, n_corrects):
+            acc = (n_corr / n_test).item()
+            log += f'{sub:03d}\t{acc:.4f}\t{n_corr.item():6d}\t{n_test.item():6d}\n'
         file.write(log)
         print(log)
     plot_confusion_matrix(labels, preds, labels_name, path=test_path, lbname=train_name, title=f'{train_name} CM')
