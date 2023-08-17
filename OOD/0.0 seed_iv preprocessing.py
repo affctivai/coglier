@@ -4,6 +4,7 @@ import pandas as pd
 import numpy as np
 from scipy import io
 import re
+import argparse
 
 #  neutral, sad, fear, and happy
 session_label = [   
@@ -111,7 +112,7 @@ def save_datas_seg_DE(window, stride, data_dir, saved_dir):
     for data in dir_list[0]:
         subnums.append(int(data.split('_')[0]))
 
-    sublists = [12,13,14]
+    sublists = [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14]
 
     # for subidx in range(0,15):
     for subidx in sublists:
@@ -156,7 +157,7 @@ def save_datas_seg_PSD(window, stride, data_dir, saved_dir):
     for data in dir_list[0]:
         subnums.append(int(data.split('_')[0]))
 
-    sublists = [12,13,14]
+    sublists = [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14]
 
     # for subidx in range(0,15):
     for subidx in sublists:
@@ -185,25 +186,33 @@ def save_datas_seg_PSD(window, stride, data_dir, saved_dir):
         os.makedirs(saved_dir, exist_ok=True)
         np.savez(join(saved_dir, str(subnums[subidx]).zfill(2)), x=x, y=y) 
     print(f'saved in {saved_dir}')
-# -----------------------------------------main---------------------------------------------------
-# source data folder location
-DATAS = join(os.getcwd(), 'datasets', "SEED_IV")
-home = os.path.expanduser('~')
-DATA = os.path.join(home, "dataset", "SEED_IV", "eeg_raw_data")
-
-WINDOW = 128 * 2
-STRIDE = 128
-
 # -----------------------------------------save data-------------------------------------------------
 # path to save preprocessed data(.npz format)
-saved_dir = join(DATAS, 'npz', "Preprocessed")
+parser = argparse.ArgumentParser()
+parser.add_argument("--src_dir", type=str, default="/mnt/data") # source data folder location
+parser.add_argument("--window", type=int, default=400)
+parser.add_argument("--stride", type=int, default=200)
+parser.add_argument("--method", type=str, default="seg", help='noseg, seg, PSD, DE')
+args = parser.parse_args()
 
-# There are 2 methods
-# save_datas_noseg(DATA, join(saved_dir, 'no_seg'))
-# save_datas_seg(WINDOW, STRIDE, DATA,join(saved_dir, 'seg'))
-## DE calculation takes a time. be careful
-# save_datas_seg_DE(WINDOW, STRIDE, DATA, join(saved_dir, 'seg_DE'))
-save_datas_seg_PSD(WINDOW, STRIDE, DATA, join(saved_dir, 'seg_PSD'))
+SRC = args.src_dir
+WINDOW = args.window
+STRIDE = args.stride
+METHOD = args.method
+src_dir = join(SRC, 'SEED_IV', 'eeg_raw_data')
+saved_dir = join(os.getcwd(), 'datasets', "SEED_IV", 'npz', "Preprocessed")
+
+if METHOD == 'noseg':
+    save_datas_noseg(src_dir, join(saved_dir, 'no_seg'))
+
+elif METHOD == 'seg':
+    save_datas_seg(WINDOW, STRIDE, src_dir,join(saved_dir, 'seg'))
+
+elif METHOD == 'PSD':
+    save_datas_seg_PSD(WINDOW, STRIDE, src_dir, join(saved_dir, 'seg_PSD'))
+
+elif METHOD == 'DE': # DE calculation takes a time. be careful
+    save_datas_seg_DE(WINDOW, STRIDE, src_dir, join(saved_dir, 'seg_DE'))
 
 # -----------------------------------------check---------------------------------------------------
 # Save the bar graph of the number of labels per class

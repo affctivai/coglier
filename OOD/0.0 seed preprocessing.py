@@ -4,7 +4,7 @@ import pandas as pd
 import numpy as np
 from scipy import io
 import re
-from torcheeg.datasets.module import SEEDDataset
+import argparse
 
 #  neutral, sad, fear, and happy
 # segmentation x: (samples, 14, segment size), y: (samples, 2)  ## [label, subID]
@@ -77,8 +77,7 @@ def save_datas_seg_DE(window, stride, data_dir, saved_dir):
         sub_num = int(dir_name.split('_')[0])
         sub_dir_list[sub_num].append(dir_name)
 
-    # sub_list = [i for i in range(1,16)]
-    sub_list = [14, 15]
+    sub_list = [i for i in range(1,16)]
 
     for subidx in sub_list:
         x, y = [], []
@@ -127,8 +126,7 @@ def save_datas_seg_PSD(window, stride, data_dir, saved_dir):
         sub_num = int(dir_name.split('_')[0])
         sub_dir_list[sub_num].append(dir_name)
 
-    # sub_list = [i for i in range(1,16)]
-    sub_list = [14, 15]
+    sub_list = [i for i in range(1,16)]
 
     for subidx in sub_list:
         x, y = [], []
@@ -159,29 +157,37 @@ def save_datas_seg_PSD(window, stride, data_dir, saved_dir):
     print(f'saved in {saved_dir}')
 
 
-# -----------------------------------------main---------------------------------------------------
+# -----------------------------------------save-data---------------------------------------------------
 # source data folder location
-DATAS = join(os.getcwd(),'datasets',"SEED")
+parser = argparse.ArgumentParser()
+parser.add_argument("--src_dir", type=str, default="/mnt/data") # source data folder location
+parser.add_argument("--window", type=int, default=400)
+parser.add_argument("--stride", type=int, default=200)
+parser.add_argument("--method", type=str, default="seg", help='noseg, seg, PSD, DE')
+args = parser.parse_args()
 
-home = os.path.expanduser('~')
-DATA = os.path.join(home, "dataset", "SEED", "Preprocessed_EEG")
+SRC = args.src_dir
+WINDOW = args.window
+STRIDE = args.stride
+METHOD = args.method
+src_dir = join(SRC, 'SEED', 'Preprocessed_EEG')
+saved_dir = join(os.getcwd(), 'datasets', "SEED", 'npz', "Preprocessed")
 
-WINDOW = 128 * 2
-STRIDE = 128
+if METHOD == 'noseg':
+    save_datas_noseg(src_dir, join(saved_dir, 'no_seg'))
 
-# -----------------------------------------save data-------------------------------------------------
-# path to save preprocessed data(.npz format)
-saved_dir = join(DATAS, 'npz', 'Preprocessed')
+elif METHOD == 'seg':
+    save_datas_seg(WINDOW, STRIDE, src_dir,join(saved_dir, 'seg'))
 
-# There are 2 methods
-# save_datas_seg(WINDOW, STRIDE, DATA,join(saved_dir, 'seg'))
-## DE calculation takes a time. be careful
-# save_datas_seg_DE(WINDOW, STRIDE, DATA, join(saved_dir, 'seg_DE'))
-save_datas_seg_PSD(WINDOW, STRIDE, DATA, join(saved_dir, 'seg_PSD'))
+elif METHOD == 'PSD':
+    save_datas_seg_PSD(WINDOW, STRIDE, src_dir, join(saved_dir, 'seg_PSD'))
+
+elif METHOD == 'DE': # DE calculation takes a time. be careful
+    save_datas_seg_DE(WINDOW, STRIDE, src_dir, join(saved_dir, 'seg_DE'))
 
 # -----------------------------------------check---------------------------------------------------
 # Save the bar graph of the number of labels per class
-from utils.tools import getFromnpz, plot_VA
+# from utils.tools import getFromnpz, plot_VA
 
 # load data
 # saved_dir = join(DATAS, 'npz', 'seg_DE')

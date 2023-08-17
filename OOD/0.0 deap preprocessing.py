@@ -4,6 +4,7 @@ import pandas as pd
 import numpy as np
 from scipy import io
 import re
+import argparse
 
 def save_datas_noseg(sublist, data_dir, saved_dir):
     print('No Segmentation x: (samples, 62, segment size), y: (samples, 2)')
@@ -198,29 +199,37 @@ def save_datas_seg_PSD(window, stride, sublist, data_dir, saved_dir):
         np.savez(join(saved_dir, subnum), x=sub_x, y=sub_y, v=sub_v, a=sub_a)
     print(f'saved in {saved_dir}')
 
+# -----------------------------------------save data-------------------------------------------------
+parser = argparse.ArgumentParser()
+parser.add_argument("--src_dir", type=str, default="/mnt/data") # source data folder location
+parser.add_argument("--window", type=int, default=256)
+parser.add_argument("--stride", type=int, default=128)
+parser.add_argument("--method", type=str, default="seg", help='noseg, seg, PSD, DE')
+args = parser.parse_args()
 
-# -----------------------------------------main---------------------------------------------------
-# source data folder location
-DATAS = join("os.getcwd()","datasets", "DEAP")
-home = os.path.expanduser('~')
-DATA = os.path.join(home, "dataset", "DEAP", "data_preprocessed_matlab")
+SRC = args.src_dir
+WINDOW = args.window
+STRIDE = args.stride
+METHOD = args.method
+src_dir = join(SRC, 'DEAP', 'data_preprocessed_matlab')
+saved_dir = join(os.getcwd(), 'datasets', "DEAP", 'npz', "Preprocessed")
 
-WINDOW = 128 * 2
-STRIDE = 128
-
-sub_list = os.listdir(DATA)
+sub_list = os.listdir(src_dir)
 sub_list = [subname[1:-4] for subname in sub_list]
 print(sub_list) # subject ID list
-# -----------------------------------------save data-------------------------------------------------
-# path to save preprocessed data(.npz format)
-saved_dir = join(DATAS, "npz", 'Preprocessed')
 
-# There are 2 methods
-# save_datas_noseg(sub_list, DATA, join(saved_dir, 'no_seg'))
-# save_datas_seg(WINDOW, STRIDE, sub_list, DATA, join(saved_dir, 'seg_raw'))
-## DE calculation takes a time. be careful
-# save_datas_seg_DE(WINDOW, STRIDE, sub_list, DATA, join(saved_dir, 'seg_DE'))
-save_datas_seg_PSD(WINDOW, STRIDE, sub_list, DATA, join(saved_dir, 'seg_PSD'))
+if METHOD == 'noseg':
+    save_datas_noseg(sub_list, src_dir, join(saved_dir, 'no_seg'))
+
+elif METHOD == 'seg':
+    save_datas_seg(WINDOW, STRIDE, sub_list, src_dir, join(saved_dir, 'seg_raw'))
+
+elif METHOD == 'PSD':
+    save_datas_seg_PSD(WINDOW, STRIDE, sub_list, src_dir, join(saved_dir, 'seg_PSD'))
+
+elif METHOD == 'DE': # DE calculation takes a time. be careful
+    save_datas_seg_DE(WINDOW, STRIDE, sub_list, src_dir, join(saved_dir, 'seg_DE'))
+
 
 # -----------------------------------------check---------------------------------------------------
 # Save the bar graph of the number of labels per class
