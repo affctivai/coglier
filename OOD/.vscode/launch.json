@@ -19,7 +19,7 @@
             "request": "launch",
             "program": "${workspaceFolder}/0.1 make dataset.py",
             "args": ["--dataset", "GAMEEMO",
-                     "--label", "v"]
+                     "--label", "a"]
         },
         {
             "name": "0.2 subdepend",
@@ -27,41 +27,41 @@
             "request": "launch",
             "program": "${workspaceFolder}/0.2 subdepend.py",
             "args": ["--dataset", "GAMEEMO",
-                     "--label", "v",
-                     "--model", "CCNN",
-                     "--feature", "DE",
-                     "--epoch", "100",
+                     "--label", "a",
+                     "--model", "TSC",
+                     "--feature", "raw",
+                     "--epoch", "130",
                      "--project_name", "Subdepend"]
         },
         {
-            "name": "1.0 baseline",
+            "name": "1.0 OOD detector",
             "type": "python",
             "request": "launch",
-            "program": "${workspaceFolder}/1.0 baseline.py",
+            "program": "${workspaceFolder}/1.0 OOD detector (High).py",
             "args": ["--dataset", "GAMEEMO",
-                     "--label", "v",
-                     "--model", "CCNN",
-                     "--feature", "DE",
-                     "--epoch", "110",
+                     "--label", "a",
+                     "--model", "TSC",
+                     "--feature", "raw",
+                     "--epoch", "200",
                      "--dropout", "0.5",
                     //  "--test",
-                    //  "--base",
-                     "--threshold", "0.75",
-                     "--topk", "2"]
+                     "--column", "test_acc",
+                     "--cut", "5"]
         },
         {
-            "name": "2.0 High",
+            "name": "2.0 Base",
             "type": "python",
             "request": "launch",
-            "program": "${workspaceFolder}/2.0 High.py",
+            "program": "${workspaceFolder}/2.0 Base_Remove.py",
             "args": ["--dataset", "GAMEEMO",
-                     "--label", "v",
-                     "--model", "CCNN",
-                     "--feature", "DE",
-                     "--epoch", "120",
+                     "--label", "a",
+                     "--model", "TSC",
+                     "--feature", "raw",
+                     "--epoch", "200",
                      "--dropout", "0.5",
-                     "--column", "test_acc",
-                     "--cut", "6"]
-        }
+                    //  "--test",
+                     "--threshold", "0.80",
+                     "--topk", "2"]
+        },
     ]
 }

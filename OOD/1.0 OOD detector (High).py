@@ -286,7 +286,7 @@ def analysis(train_path):
         raise FileNotFoundError(f"File not found: {train_path}, Set the train weight path properly.")
     
     analysis_path = Path(join(train_path, 'analysis'))
-    #analysis_path = get_folder(analysis_path)
+    analysis_path = get_folder(analysis_path)
 
     SUBLIST = [str(i).zfill(2) for i in range(1, SUB_NUM + 1)]  # '01', '02', ...
     datas, targets = load_list_subjects(DATA, 'train', SUBLIST, LABEL)
