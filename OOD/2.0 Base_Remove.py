@@ -50,7 +50,7 @@ TEST = args.test
 THRESHOLD = args.threshold
 TOPK = args.topk
 
-PROJECT = f'Base_remove{int(THRESHOLD*100)}'
+PROJECT = f'Base_Remove{int(THRESHOLD*100)}'
 
 if MODEL_NAME == 'CCNN': SHAPE = 'grid'
 elif MODEL_NAME == 'TSC' or MODEL_NAME == 'EEGNet': SHAPE = 'expand'; FEATURE = 'raw'
@@ -91,12 +91,14 @@ def remove_ood(datas, targets, threshold):
             msps.append(msp.cpu())
     msps = torch.cat(msps, dim=0)
     ind_idxs = msps >= threshold
-    _, total_OOD_ID = np.unique(ind_idxs, return_counts=True)  # False:OOD, True:ID
-    print(f'T:{threshold}\tOOD\tID\ncount{total_OOD_ID} \nratio{np.round(total_OOD_ID / len(msps), 2)}')
+    n_ind = ind_idxs.sum().item()
+    n_ood = len(ind_idxs) - n_ind
 
+    remove_info = f'T:{threshold}\tID/OOD count|ratio : {n_ind},{n_ood}|{n_ind/len(ind_idxs):.2f},{n_ood/len(ind_idxs):.2f}\n'
+    print(remove_info)
+  
     datas_ind, targets_ind = datas[ind_idxs], targets[ind_idxs]
-    #datas_ood, targets_ood = datas[ood_idxs], targets[ood_idxs]
-    return datas_ind, targets_ind
+    return datas_ind, targets_ind, remove_info
 
 #--------------------------------------train-------------------------------------------------------
 def run_train():
@@ -111,7 +113,7 @@ def run_train():
     
     # remove OOD datas
     if THRESHOLD > 0:
-        datas, targets = remove_ood(datas, targets, THRESHOLD)
+        datas, targets, remove_info = remove_ood(datas, targets, THRESHOLD)
 
     # Split into train, valid
     X_train, X_valid, Y_train, Y_valid = train_test_split(datas, targets, test_size=0.1, stratify=targets, random_state=random_seed)
@@ -188,6 +190,9 @@ def run_train():
     with open(join(train_path, 'train.txt'), 'w') as file:
         file.write(f'{train_name} {labels_name} train:{tuple(trainset.x.shape)} valid:{tuple(validset.x.shape)}\n'
                    f'Epoch_{EPOCH}\tTrain_Loss|Acc1_Acc{TOPK}\tValid_Loss|Acc1_Acc{TOPK}\n')
+        if THRESHOLD > 0:
+            file.write(remove_info)
+
         lrs = []
         train_losses, train_accs, valid_losses, valid_accs = [], [], [], []
         best_valid_loss = float('inf')
@@ -231,7 +236,7 @@ def run_test(train_path):
 
     # remove OOD datas
     if THRESHOLD > 0:
-        datas, targets = remove_ood(datas, targets, THRESHOLD)
+        datas, targets, remove_info = remove_ood(datas, targets, THRESHOLD)
     
     testset = PreprocessedDataset(datas, targets)
     print(f'testset: {testset.x.shape}')
@@ -286,7 +291,9 @@ def run_test(train_path):
     test_path.mkdir(parents=True, exist_ok=True)
     with open(join(test_path, 'output.txt'), 'w') as file:
         file.write(f'{train_name} {labels_name} test:{tuple(testset.x.shape)}\n')
-
+        if THRESHOLD > 0:
+            file.write(remove_info)
+        
         losss, accs_1, accs_k, labels, preds, msps, subIDs  = evaluate_test(model, testloader, criterion, device, TOPK)
         
         # ----------OOD detection----------
@@ -314,6 +321,6 @@ def run_test(train_path):
     print(f'saved in {test_path}')
 
 #---------------------------------------main-------------------------------------------------------
-#train_path = get_folder(train_path)
+train_path = get_folder(train_path)
 if not TEST: run_train()
 run_test(train_path)

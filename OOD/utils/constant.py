@@ -79,7 +79,7 @@ SEED_IV_SUBNUM = 15
 
 def load_dataset_info(dataset):
     if dataset == 'GAMEEMO':
-        DATAS = join(DATASETS, 'GAMEEMO_npz', 'Projects')
+        DATAS = join(os.getcwd(),"datasets", dataset, "npz", "Projects")
         SUB_NUM = GAMEEMO_SUBNUM
         CHLS = GAMEEMO_CHLS
         LOCATION = GAMEEMO_LOCATION
