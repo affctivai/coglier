@@ -48,7 +48,7 @@ def get_model_with_dropout(model_name, data_x_shape, num_classes, device, dropou
         return model.to(device), max_lr
     else:
         print("Unknown Model.")
-        exti(1)
+        exit(1)
 
 def get_model(model_name, data_x_shape, num_classes, device):
     return get_model_with_dropout(model_name, data_x_shape, num_classes, device, 0.5)
@@ -244,10 +244,8 @@ class GraphConvolution(nn.Module):
     def forward(self, x: torch.Tensor, adj: torch.Tensor) -> torch.Tensor:
         out = torch.matmul(adj, x)
         out = torch.matmul(out, self.weight)
-        if self.bias is not None:
-            return out + self.bias
-        else:
-            return out
+        if self.bias is not None: return out + self.bias
+        else: return out
 
 class Linear(nn.Module):
     def __init__(self, in_channels: int, out_channels: int, bias: bool=True):

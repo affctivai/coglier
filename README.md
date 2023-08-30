@@ -3,71 +3,83 @@ OOD for EEG signals
 
 
 ## Dataset 
-- **DEAP** :  9 class  *(valence, arousal)*
-- **SEED** : 
-- **SEED IV** :
+- **SEED** : 3 class *(netral, positive, negative)*
+- **SEED-IV** : 4 class *(happiness, sadness, fear, neutral)*
 - **GAMEEMO** : 9 class  *(valence, arousal)*
+- **DEAP** :  9 class  *(valence, arousal)*
+---
+
+### **Preprocessing** (Offline Transform, Feature Extraction ...)
+**0.0 preprocessing.py**<br>
+*Temporal Segmentation (Sliding Window, Time Partitioning, Time Window, ...)*<br>
+\+ *Feature Extraction (Signal Transformation, Dimensionality Reduction, ...)*
+- Segmentation (Raw Signal)
+- Segmentation + DE (Differential Entropy)
+- Segmentation + PSD (Power Spectral Density)
+    | | Seg<br>`(channels, window)` | Seg + DE<br>`(channels, 4 bands)` | Seg + PSD<br>`(channels, 4 bands)` |
+    | --- | :---:| :---: | :---: |
+    | **SEED**    | `(62, 400)` | `(62, 4)` | `(62, 4)` |
+    | **SEED-IV** | `(62, 400)` | `(62, 4)` | `(62, 4)` |
+    | **GAMEEMO** | `(14, 256)` | `(14, 4)` | `(14, 4)` |
+    | **DEAP**    | `()` | `()` | `()` |
+
+`EEG channels(num_electrodes), Segment size(Window size)`
+
+### **Make Dataset** 
+train and test data are split for reliable generalization evaluation.<br>
+**0.1 make dataset.py** : *( train : test = 9 : 1 )*
 
 ---
 
-### **preprocessing**
-**0.0 preprocessing.py** : *Temporal Segmentation (Sliding Window, Time Partitioning, Time Window, ...)*
-- No segmentation
-- segmentation (raw)
-- segmentation + DE
-- segmentation + PSD
+## Our Method
+![Emotion OOD Detection System Based on MSP](fig_1.jpg)
 
-data shape: `(Samples, EEG channels(num_electrodes), Segment size(Window size))`
+### **1) Subject-dependent Train, Test**  
+**0.2 subdepend.py**: For each subject, **subdepend.py** is executed.
 
-### **make dataset** 
-**0.1 make dataset.py** : *( train : valid : test = 80 : 10 :10 )*
-
-Subject-Independent / Subject-dependent
-
-### **baseline**  
-**1.0 baseline.py** : *Subject-Independet train, test*
-
-- scaling
-  - 'standard' : `sklearn.preprocessing.StandardScaler()`
-  - 'log' : `numpy.log1p(x)`
-- deshape
-  - 'gird' : make 9x9 grid `(samples, channels, 4 bands) -> (samples, 4 bands, 9, 9)`
-  - 'expand' : `(samples, channels, window) -> (samples, 1, channels, window)`
+### **2) Make OOD Detection Model**  
+**1.0 OOD detector.py**<br>
+- Data Pipeline
+  - scaling
+    - Raw Signal - standardization
+    - PSD - log transformation
+  - deshape(reshape)
+    - CCNN - grid: make 9x9 grid (samples, channels, 4 bands) -> (samples, 4 bands, 9, 9)
+    - TSC/EEGNet - expand : (samples, channels, window) -> (samples, 1, channels, window)
   
-- model 
+- Model 
   - CCNN : https://link.springer.com/chapter/10.1007/978-3-030-04239-4_39
   - TSCeption : https://arxiv.org/abs/2104.02935
   - EEGNet : https://arxiv.org/abs/1611.08024
   - DGCNN : https://ieeexplore.ieee.org/abstract/document/8320798
-- hyperparameter
+- Hyperparameter
     |         | CCNN   | TSCeption| EEGNet | DGCNN  |
     | ---     | :----: | :-------:| :----: | :----: |
-    | epoch   | 100    |    200   |  200   |   200  |
+    | epoch   | 100    |    200   |  200   |   100  |
     | max_lr  | 1e-4   |   1e-3   |  1e-3  |  1e-3  |
-    | dropout | 0.5    |    0     |   0    |    0   |
+    | dropout | 0.5    |   0.5    |   0.5  |    -   |
+    |  |  |  |  |  |
+    |  |  |  |  |  |
 
 - criterion = `torch.nn.CrossEntropyLoss()`
 - optimizer = `torch.optim.Adam(model.parameters(), lr=0, weight_decay=1e-4)`
-- scheduler = `CosineAnnealingWarmUpRestarts(optimizer, T_0=STEPS, T_mult=1, eta_max=max_lr, T_up=STEP*3, gamma=0.5)` 
-  -  utils > scheduler.py
+- scheduler = `CosineAnnealingWarmUpRestarts(optimizer, eta_max=max_lr)`  utils > scheduler.py
 
-## Our Method
-### **High Group train**  
-**2.0 High.py** : *Subject-Independet train, test*
+### **3) Remove OOD and Train ID**  
+**2.0 Base_Remove.py**<br>
+Setting the threshold of ODM to adjust the OOD removal rate (approximately 10%).
 
-Model is trained based on the High(TOP) groups with high test accuracy in individal model (subject-dependent).
-It also serves as the basis model for partitioning the entire segmented datas,
-This is an intermediate model for the Final Model.
+|     | CCNN/DGCNN-PSD | CCNN/DGCNN-DE | TSCeption | EEGNet |
+| --- | :---:| :---: | :---: | :---: |
+| threshold | 0.50~ | 0.85~ | 0.65~ | -  |
 
-GAMEEMO-CCNN_DE_valence test_acc
-high group (20) ['04', '18', '24', '10', '09', '03', '12', '17', '05', '01', '06', '11', '20', '13', '07', '15', '02', '21', '16', '08']
-low group  (8)  ['23', '19', '27', '28', '25', '26', '22', '14']
+### **4) Compare with the Baseline**
+In **2.0 Base_Remove.py**, `trheshold==0` is equivalent to Baseline.
 
 
+## Results
 
-
-
-
+![Classification Accuracy and AUROC of Ours and Baseline](table.png)
 
 
 

@@ -66,7 +66,7 @@ class BandPowerSpectralDensity: # 양의 실수
         return np.stack(band_list, axis=-1)
 
 
-# 3D-> 4D-----------------------------------------------------------------------------------------
+# Online Transform --------------------------------------------------------------------------
 def make_grid(datas, channel, location):
     CHANNEL_LOCATION_DICT = format_channel_location_dict(channel, location)
     togrid = ToGrid(CHANNEL_LOCATION_DICT)
@@ -115,7 +115,7 @@ class ToGrid:
         # num_electrodes x timestep
         return outputs
 
-# scaling-----------------------------------------------------------------------------------------
+# scaling
 def scaling(datas, scaler_name = None):
     if scaler_name == None: return datas
     flattend = datas.reshape(-1, 1)
@@ -138,17 +138,17 @@ def scaling(datas, scaler_name = None):
     scaled_datas = scaled_datas.reshape(datas.shape)
     return scaled_datas
 
-# deshaoe-----------------------------------------------------------------------------------------
+# deshape
 def deshape(datas, shape_name = None, chls=None, location=None):
     if shape_name == None: return datas
 
     # for CCNN model (samples, channels, 4 bands) -> (samples, 4 bands, 9, 9)
-    if shape_name == 'grid':
+    if shape_name == 'grid': 
         datas = make_grid(datas, chls, location)
-        # print(f'grid (samples, 4freq, 9x9): {datas.shape}')
+        print(f'grid (samples, 4freq, 9x9): {datas.shape}')
 
-    # for TSCeption, EEGnet (samples, channels, window) -> (samples, 1, channels, window)
-    if shape_name == 'expand':
+    # for TSCeption, EEGNet (samples, channels, window) -> (samples, 1, channels, window)
+    if shape_name == 'expand': 
         datas = np.expand_dims(datas, axis=1)
-        # print(f'expand (samples, 1, channels, window): {datas.shape}')
+        print(f'expand (samples, 1, channels, window): {datas.shape}')
     return datas

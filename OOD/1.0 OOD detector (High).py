@@ -37,6 +37,7 @@ parser.add_argument("--dropout", dest="dropout", type=float, action="store", def
 parser.add_argument("--column", dest="column", action="store", default="test_acc", help='test_acc, test_loss, roc_auc_score') # 기준 칼럼
 parser.add_argument("--cut", type= int, dest="cut", action="store", default="4") # low group count
 parser.add_argument("--test", dest="test", action="store_true") # Whether to train data
+parser.add_argument("--thresholds", type=str, dest="thresholds", action="store", default='0.80 0.85 0.90 0.95')
 args = parser.parse_args()
 
 DATASET_NAME = args.dataset
@@ -51,6 +52,7 @@ PROJECT = 'High'
 COLUMN = args.column
 CUT = args.cut
 TEST = args.test
+THRESHOLDS = list(map(float, args.thresholds.split()))
 
 if MODEL_NAME == 'CCNN': SHAPE = 'grid'
 elif MODEL_NAME == 'TSC' or MODEL_NAME == 'EEGNet': SHAPE = 'expand'; FEATURE = 'raw'
@@ -303,8 +305,8 @@ def analysis(train_path):
     
     analysis_path.mkdir(parents=True, exist_ok=True)
     for threshold in THRESHOLDS:
-        ind_idxs = msps >= threshold
-        ood_idxs = msps < threshold
+        ind_idxs = msps >= float(threshold)
+        ood_idxs = msps < float(threshold)
         
         n_ind = ind_idxs.sum().item()
         n_ood = len(ind_idxs) - n_ind
@@ -349,5 +351,4 @@ def analysis(train_path):
 train_path = get_folder(train_path)
 if not TEST: run_train()
 detect(train_path)
-THRESHOLDS = [0.80, 0.85, 0.90, 0.95]
 analysis(train_path)

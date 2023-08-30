@@ -186,8 +186,27 @@ def get_roc_auc_score(labels, preds):
 
     score = f'{roc_auc_score(labels_oh, preds_oh)*100:.2f}'
     return score
-#-------------------------------------------external----------------------------------------------
 
+#------------------------------------------- Utility ----------------------------------------------
+def seed_everything(seed):
+    random.seed(seed)
+    np.random.seed(seed)
+    os.environ["PYTHONHASHSEED"] = str(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed(seed)
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
+
+def get_folder(path):
+    if path.exists():
+        for n in range(2, 100):
+            p = f'{path}{n}'
+            if not exists(p):
+                break
+        path = Path(p)
+    return path
+
+#-------------------------------------------External----------------------------------------------
 # earlystopping
 class EarlyStopping:
     def __init__(self, patience=7, verbose=False, delta=0, path='checkpoint.pt', trace_func=print):
@@ -221,22 +240,3 @@ class EarlyStopping:
         torch.save(model.state_dict(), self.path)
         self.val_loss_min = val_loss
 
-#------------------------------------------- Utility ----------------------------------------------
-
-def seed_everything(seed):
-    random.seed(seed)
-    np.random.seed(seed)
-    os.environ["PYTHONHASHSEED"] = str(seed)
-    torch.manual_seed(seed)
-    torch.cuda.manual_seed(seed)
-    torch.backends.cudnn.deterministic = True
-    torch.backends.cudnn.benchmark = False
-
-def get_folder(path):
-    if path.exists():
-        for n in range(2, 100):
-            p = f'{path}{n}'
-            if not exists(p):
-                break
-        path = Path(p)
-    return path
