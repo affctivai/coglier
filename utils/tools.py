@@ -1,4 +1,6 @@
 import os
+from os.path import join, exists
+import random
 import numpy as np
 import torch
 import torch.nn.functional as F
@@ -8,25 +10,7 @@ import matplotlib.pyplot as plt
 from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
 from sklearn.metrics import roc_curve, auc, precision_recall_curve, roc_auc_score
 from sklearn.preprocessing import OneHotEncoder
-
-
-# .npz load
-def getFromnpz(dir, sublist, out=True, cla='v'):
-    datas, targets = [], []
-    for subnum in sublist:
-        subnum += '.npz'
-        if out: print(subnum)
-        data = np.load(os.path.join(dir, subnum), allow_pickle=True)
-        datas.extend(data['x'])
-        if cla == '4':
-            targets.extend(data['y'])
-        if cla == 'v':
-            targets.extend(data['v'])
-        if cla == 'a':
-            targets.extend(data['a'])
-    datas = np.array(datas)
-    targets = np.array(targets)
-    return datas, targets
+from pathlib import Path
 
 def getFromnpz_(dir, sub, out=True, cla='v'):
     sub += '.npz'
@@ -202,8 +186,27 @@ def get_roc_auc_score(labels, preds):
 
     score = f'{roc_auc_score(labels_oh, preds_oh)*100:.2f}'
     return score
-#-------------------------------------------external----------------------------------------------
 
+#------------------------------------------- Utility ----------------------------------------------
+def seed_everything(seed):
+    random.seed(seed)
+    np.random.seed(seed)
+    os.environ["PYTHONHASHSEED"] = str(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed(seed)
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
+
+def get_folder(path):
+    if path.exists():
+        for n in range(2, 100):
+            p = f'{path}{n}'
+            if not exists(p):
+                break
+        path = Path(p)
+    return path
+
+#-------------------------------------------External----------------------------------------------
 # earlystopping
 class EarlyStopping:
     def __init__(self, patience=7, verbose=False, delta=0, path='checkpoint.pt', trace_func=print):
@@ -236,3 +239,4 @@ class EarlyStopping:
             self.trace_func(f'Validation loss decreased ({self.val_loss_min:.6f} --> {val_loss:.6f}).  Saving model ...')
         torch.save(model.state_dict(), self.path)
         self.val_loss_min = val_loss
+
