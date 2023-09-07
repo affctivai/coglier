@@ -319,14 +319,15 @@ def analysis(train_path):
         subids, ind_subs = np.unique(targets_ind[:, 1], return_counts=True)
         _, ood_subs = np.unique(targets_ood[:, 1], return_counts=True)
 
-        plt.figure(figsize=(10, 15))
+        plt.figure(figsize=(10, 10))
         plt.bar(subids, ood_subs, color='#4a7fb0', label='OOD')
         plt.bar(subids, ind_subs, color='#adc6e5', bottom=ood_subs, label='ID')  # stacked bar chart
 
-        plt.title(f'ID/OODs per subject (T={threshold})', fontsize=18)
-        plt.ylabel('num of samples', fontsize=15)
-        plt.xlabel('Subject ID', fontsize=15)
-        plt.xticks(subids, fontsize=10)
+        plt.title(f'ID/OODs per subject (T={threshold})', fontsize=25)
+        plt.ylabel('Num of Samples', fontsize=35)
+        plt.xlabel('Subject ID', fontsize=35)
+        plt.xticks(subids, fontsize=25)
+        plt.yticks([2000,4000,6000,8000], fontsize=25)
         plt.legend(fontsize=25, loc='upper left')
         plt.tight_layout()
         plt.savefig(join(analysis_path, f'ID_OOD_subid{int(threshold * 100)}.png'), dpi=200)
@@ -335,20 +336,20 @@ def analysis(train_path):
         _, ind_class = np.unique(targets_ind[:, 0], return_counts=True)
         _, ood_class = np.unique(targets_ood[:, 0], return_counts=True)
 
-        plt.figure(figsize=(8, 15))
+        plt.figure(figsize=(8, 8))
         plt.bar(labels_name, ood_class, color='#4a7fb0', label='OOD')
         plt.bar(labels_name, ind_class, color='#adc6e5', bottom=ood_class, label='ID')
 
-        plt.title(f'ID/OODs per class (T={threshold})', fontsize=18)
-        plt.ylabel('num of samples', fontsize=15)
-        plt.xlabel(train_name, fontsize=15)
-        plt.xticks(labels_name, fontsize=15)
+        plt.title(f'ID/OODs per class (T={threshold})', fontsize=25)
+        plt.ylabel('num of samples', fontsize=25)
+        plt.xlabel(train_name, fontsize=25)
+        plt.xticks(labels_name, fontsize=25)
         plt.legend(fontsize=25, loc='upper left')
         plt.tight_layout()
         plt.savefig(join(analysis_path, f'ID_OOD_class{int(threshold * 100)}.png'), dpi=200)
 
 #--------------------------------------main--------------------------------------------------------
-train_path = get_folder(train_path)
+# train_path = get_folder(train_path)
 if not TEST: run_train()
 detect(train_path)
 analysis(train_path)
