@@ -14,6 +14,16 @@ def load_list_subjects(src, mode, sublist, label):
     datas = np.array(datas); targets = np.array(targets)
     return datas, targets
 
+def load_list_subjects_rp(src, mode, sublist, label):
+    datas, targets = [], []
+    for subnum in sublist:
+        subnum += '_rp.npz'
+        data = np.load(join(src, mode, f'{label}_{subnum}'), allow_pickle=True)
+        datas.extend(data['X'])
+        targets.extend(data['Y'])
+    datas = np.array(datas); targets = np.array(targets)
+    return datas, targets
+
 class PreprocessedDataset(Dataset):
     def __init__(self, x, Y):
         self.x = torch.tensor(x, dtype=torch.float32)
