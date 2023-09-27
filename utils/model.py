@@ -109,6 +109,15 @@ class CCNN(nn.Module): # input_size: batch x freq x 9 x 9
         x = self.lin1(x)
         x = self.lin2(x)
         return x
+    
+    def get_features(self, x):
+        x1 = self.conv1(x)
+        x2 = self.conv2(x1)
+        x3 = self.conv3(x2)
+        x4 = self.conv4(x3)
+        xs = [x1.cpu(),x2.cpu(),x3.cpu(),x4.cpu()]
+        return xs
+
 
 # -----------------------------------------TSCeption--------------------------------------------
 class TSCeption(nn.Module): # input_size: batch x 1 x EEG channel x datapoint
