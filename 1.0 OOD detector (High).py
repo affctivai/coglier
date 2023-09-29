@@ -8,7 +8,7 @@ import pandas as pd
 import argparse
 
 import torch
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, Subset
 import torch.optim as optim
 import torch.nn as nn
 
@@ -37,7 +37,6 @@ parser.add_argument("--dropout", dest="dropout", type=float, action="store", def
 parser.add_argument("--column", dest="column", action="store", default="test_acc", help='test_acc, test_loss, roc_auc_score') # 기준 칼럼
 parser.add_argument("--cut", type= int, dest="cut", action="store", default="4") # low group count
 parser.add_argument("--test", dest="test", action="store_true") # Whether to train data
-parser.add_argument("--thresholds", type=str, dest="thresholds", action="store", default='0.80 0.85 0.90 0.95')
 args = parser.parse_args()
 
 DATASET_NAME = args.dataset
@@ -48,11 +47,10 @@ BATCH = args.batch
 EPOCH = args.epoch
 DROPOUT = args.dropout
 
-PROJECT = 'High'
 COLUMN = args.column
 CUT = args.cut
 TEST = args.test
-THRESHOLDS = list(map(float, args.thresholds.split()))
+PROJECT = f'Low_{CUT}'
 
 if MODEL_NAME == 'CCNN': SHAPE = 'grid'
 elif MODEL_NAME == 'TSC' or MODEL_NAME == 'EEGNet': SHAPE = 'expand'; FEATURE = 'raw'
@@ -171,6 +169,7 @@ def run_train():
 
     train_path.mkdir(parents=True, exist_ok=True)
     with open(join(train_path, 'train.txt'), 'w') as file:
+        file.write(f'HIGS:{len(HIGS)} {HIGS}\nLOWS:{len(LOWS)} {LOWS}\n')
         file.write(f'{train_name} {labels_name} train:{tuple(trainset.x.shape)} valid:{tuple(validset.x.shape)}\n'
                    f'Epoch_{EPOCH}  Train_Loss|Acc\tValid_Loss|Acc\n')
         lrs = []
@@ -229,8 +228,7 @@ def evaluate_test(model, loader, criterion, device):
     return losss, accs, labels, preds, msps, subIDs
 
 def detect(train_path):
-    if not exists(train_path):
-        raise FileNotFoundError(f"File not found: {train_path}, Set the train weight path properly.")
+    if not exists(train_path): raise FileNotFoundError(f"File not found: {train_path}, Set the train weight path properly.")
     
     test_path = Path(join(train_path, 'test'))
     test_path = get_folder(test_path)
@@ -240,12 +238,18 @@ def detect(train_path):
     datas_l = scaling(datas_l, scaler_name=SCALE)
     datas_l = deshape(datas_l, shape_name=SHAPE, chls=CHLS, location=LOCATION)
     lowsset = PreprocessedDataset(datas_l, targets_l)
-    print(f'testset for measuring OOD performance| Highs: {testset.x.shape}, Lows: {lowsset.x.shape}')
 
+    testset_length = len(testset)
+    lowsset_length = len(lowsset)
+
+    random_indices = np.random.choice(lowsset_length, testset_length, replace=False)
+    lowsset_subset = Subset(lowsset, random_indices)
+    lowsloader = DataLoader(lowsset_subset, batch_size=BATCH, shuffle=False)
     testloader = DataLoader(testset, batch_size=BATCH, shuffle=False)
-    lowsloader = DataLoader(lowsset, batch_size=BATCH, shuffle=False)
 
-    model, _ = get_model_with_dropout(MODEL_NAME, testset.x.shape, len(labels_name), device, DROPOUT)
+    print(f'testset for measuring OOD performance| Highs: {testset.x.shape}, Lows: {lowsset.x.shape}')
+    
+    model, _ = get_model(MODEL_NAME, testset.x.shape, len(labels_name), device, DROPOUT)
     model.load_state_dict(torch.load(join(train_path, 'best.pt')))
 
     criterion = nn.CrossEntropyLoss(reduction='none')
@@ -264,7 +268,9 @@ def detect(train_path):
         log = (f'high_loss: {high_loss:.3f}\thigh_acc: {high_acc*100:6.2f}%\troc_auc_score: {get_roc_auc_score(labels, preds)}\n')
 
         log += '----------OOD detection performance----------\n'
-        y_true = torch.cat([torch.ones(len(testset)), torch.zeros(len(lowsset))])
+        print(len(msps_higs), len(msps_lows))
+        
+        y_true = torch.cat([torch.ones(len(msps_higs)), torch.zeros(len(msps_lows))])
         y_pred = torch.cat([msps_higs, msps_lows])
 
         log += print_auroc(y_true, y_pred, percent=0.95, path=test_path)
@@ -272,84 +278,30 @@ def detect(train_path):
         file.write(log)
         print(log)
 
-        # plot confidence histogram
-        plt.figure(figsize=(8,8))
-        plt.hist(msps_lows.cpu() , bins=100, alpha=0.4, label='Lows')
-        plt.hist(msps_higs.cpu(), bins=100, alpha=0.4, label='Highs')
-        plt.xlabel('Confidence', fontsize=15)
-        plt.ylabel('num of samples', fontsize=15)
-        plt.legend(fontsize=25)
-        plt.tight_layout()
-        plt.savefig(join(test_path, 'confidence_hist.png'), dpi=200)
-    print(f'saved in {test_path}')
-
-def analysis(train_path):
-    if not exists(train_path):
-        raise FileNotFoundError(f"File not found: {train_path}, Set the train weight path properly.")
-    
-    analysis_path = Path(join(train_path, 'analysis'))
-    analysis_path = get_folder(analysis_path)
-
-    SUBLIST = [str(i).zfill(2) for i in range(1, SUB_NUM + 1)]  # '01', '02', ...
-    datas, targets = load_list_subjects(DATA, 'train', SUBLIST, LABEL)
-    datas = scaling(datas, scaler_name=SCALE)
-    datas = deshape(datas, shape_name=SHAPE, chls=CHLS, location=LOCATION)
-    dataset = PreprocessedDataset(datas, targets)
-    loader = DataLoader(dataset, batch_size=BATCH, shuffle=False)
-    model, _ = get_model_with_dropout(MODEL_NAME, dataset.x.shape, len(labels_name), device, DROPOUT)
-    model.load_state_dict(torch.load(join(train_path, 'best.pt')))
-    criterion = nn.CrossEntropyLoss(reduction='none')
-    criterion = criterion.to(device)
-
-    _, _, _, _, msps, _ = evaluate_test(model, loader, criterion, device)
-    
-    analysis_path.mkdir(parents=True, exist_ok=True)
-    for threshold in THRESHOLDS:
-        ind_idxs = msps >= float(threshold)
-        ood_idxs = msps < float(threshold)
+        # plot confidence histogram---------------------------------------------------------------
+        import seaborn as sns
+        from scipy.stats import norm
         
-        n_ind = ind_idxs.sum().item()
-        n_ood = len(ind_idxs) - n_ind
-        print(f'T:{threshold}\tID/OOD count|ratio : {n_ind},{n_ood}|{n_ind/len(ind_idxs):.2f},{n_ood/len(ind_idxs):.2f}\n')
+        def plot_conf(scale='log'):
+            plt.figure(figsize=(10,6))
+            # plt.hist(msps_lows.cpu() , bins=100, alpha=0.5, label='Lows', density=True)
+            # plt.hist(msps_higs.cpu(), bins=100, alpha=0.5, label='Highs', density=True)
+            sns.histplot(msps_lows, bins=30, label='Low', alpha=0.4)
+            sns.histplot(msps_higs, bins=30, label='High', alpha=0.4)
+            if scale=='log':  plt.yscale('log')
+            plt.title("Distribution of MSP for ID(High) vs OOD(Low)", fontsize=18)
+            plt.xlabel('Maximum Softmax Probability', fontsize=15)
+            plt.ylabel("Log-Scaled Frequency", fontsize=15)
+            plt.legend(fontsize=25)
+            plt.tight_layout()
+            plt.savefig(join(test_path, f'MSP_hist_{scale}.png'), dpi=300)
+        
+        plot_conf(scale='log') 
+        plot_conf(scale='')
 
-        datas_ind, targets_ind = datas[ind_idxs], targets[ind_idxs]
-        datas_ood, targets_ood = datas[ood_idxs], targets[ood_idxs]
-
-        ## plot ID & OOD per subject
-        subids, ind_subs = np.unique(targets_ind[:, 1], return_counts=True)
-        _, ood_subs = np.unique(targets_ood[:, 1], return_counts=True)
-
-        plt.figure(figsize=(10, 10))
-        plt.bar(subids, ood_subs, color='#4a7fb0', label='OOD')
-        plt.bar(subids, ind_subs, color='#adc6e5', bottom=ood_subs, label='ID')  # stacked bar chart
-
-        plt.title(f'ID/OODs per subject (T={threshold})', fontsize=25)
-        plt.ylabel('Num of Samples', fontsize=35)
-        plt.xlabel('Subject ID', fontsize=35)
-        plt.xticks(subids, fontsize=25)
-        plt.yticks([2000,4000,6000,8000], fontsize=25)
-        plt.legend(fontsize=25, loc='upper left')
-        plt.tight_layout()
-        plt.savefig(join(analysis_path, f'ID_OOD_subid{int(threshold * 100)}.png'), dpi=200)
-
-        ## plot ID & OOD per class
-        _, ind_class = np.unique(targets_ind[:, 0], return_counts=True)
-        _, ood_class = np.unique(targets_ood[:, 0], return_counts=True)
-
-        plt.figure(figsize=(8, 8))
-        plt.bar(labels_name, ood_class, color='#4a7fb0', label='OOD')
-        plt.bar(labels_name, ind_class, color='#adc6e5', bottom=ood_class, label='ID')
-
-        plt.title(f'ID/OODs per class (T={threshold})', fontsize=25)
-        plt.ylabel('num of samples', fontsize=25)
-        plt.xlabel(train_name, fontsize=25)
-        plt.xticks(labels_name, fontsize=25)
-        plt.legend(fontsize=25, loc='upper left')
-        plt.tight_layout()
-        plt.savefig(join(analysis_path, f'ID_OOD_class{int(threshold * 100)}.png'), dpi=200)
+    print(f'saved in {test_path}')
 
 #--------------------------------------main--------------------------------------------------------
 # train_path = get_folder(train_path)
 if not TEST: run_train()
 detect(train_path)
-analysis(train_path)
