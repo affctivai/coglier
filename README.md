@@ -32,7 +32,7 @@ train and test data are split for reliable generalization evaluation.<br>
 ---
 
 ## Our Method
-![Emotion OOD Detection System Based on MSP](fig_1.jpg)
+![Emotion OOD Detection System Based on MSP](src/fig_1.jpg)
 
 ### **1) Subject-dependent Train, Test**  
 **0.2 subdepend.py**: For each subject, **subdepend.py** is executed.
@@ -79,13 +79,7 @@ In **2.0 Base_Remove.py**, `trheshold==0` is equivalent to Baseline.
 
 ## Results
 
-![Classification Accuracy and AUROC of Ours and Baseline](table.png)
-
-
-
-
-
-
+![Classification Accuracy and AUROC of Ours and Baseline](src/table.png)
 
 
 
