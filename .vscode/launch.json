@@ -8,10 +8,20 @@
             "name": "0.0 GAMEEMO",
             "type": "python",
             "request": "launch",
-            "program": "${workspaceFolder}/0.0 GAMEEMO preprocessing.py",
+            "program": "${workspaceFolder}/0.0 gameemo preprocessing.py",
             "args": ["--window","256",
                      "--stride","128", 
-                     "--method","PSD"]
+                     "--method","PSD"] //DE, PSD, seg
+        },
+        {
+            "name": "0.0 SEED-IV",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/0.0 seed_iv preprocessing.py",
+            "args": [
+                     "--window","400",
+                     "--stride","200", 
+                     "--method","seg"] //DE, PSD, seg
         },
         {
             "name": "0.1 make dataset",
@@ -34,19 +44,32 @@
                      "--project_name", "Subdepend"]
         },
         {
-            "name": "1.0 OOD detector",
+            "name": "detector-High",
             "type": "python",
             "request": "launch",
             "program": "${workspaceFolder}/1.0 OOD detector (High).py",
             "args": ["--dataset", "GAMEEMO",
-                     "--label", "a",
-                     "--model", "TSC",
-                     "--feature", "raw",
-                     "--epoch", "200",
+                     "--label", "v",
+                     "--model", "CCNN",
+                     "--feature", "DE",
+                     "--epoch", "100",
                      "--dropout", "0.5",
                     //  "--test",
                      "--column", "test_acc",
                      "--cut", "5"]
+        },
+        {
+            "name": "analysis",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/analysis.py",
+            "args": ["--dataset", "SEED",
+                     "--label", "4",
+                     "--model", "CCNN",
+                     "--feature", "DE",
+                     "--column", "test_acc",
+                     "--cut", "4",
+                     "--thresholds", "0.95"]
         },
         {
             "name": "2.0 Base",
