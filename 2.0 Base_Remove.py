@@ -37,6 +37,8 @@ parser.add_argument("--dropout", dest="dropout", type=float, action="store", def
 parser.add_argument("--test", dest="test", action="store_true", help='Whether to train data')
 parser.add_argument("--threshold", dest="threshold", type=float, action="store", default=0, help='0.98, 0.95, 0.90, 0.85')
 parser.add_argument("--topk", dest="topk", type=int, action="store", default=2)
+
+parser.add_argument("--detector", dest="detector", action="store", default="High", help='High, Low_CUT')
 args = parser.parse_args()
 
 DATASET_NAME = args.dataset
@@ -50,7 +52,9 @@ TEST = args.test
 THRESHOLD = args.threshold
 TOPK = args.topk
 
-PROJECT = f'Base_Remove{int(THRESHOLD*100)}'
+DETECTOR = args.detector
+PROJECT = f'{DETECTOR}_RR{int(THRESHOLD*100)}'
+# PROJECT = f'Base_Remove{int(THRESHOLD*100)}'
 
 if MODEL_NAME == 'CCNN': SHAPE = 'grid'
 elif MODEL_NAME == 'TSC' or MODEL_NAME == 'EEGNet': SHAPE = 'expand'; FEATURE = 'raw'
@@ -71,15 +75,14 @@ DATA = join(DATAS, FEATURE)
 train_path = Path(join(os.getcwd(), 'results', DATASET_NAME, MODEL_FEATURE, PROJECT, train_name))
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-def remove_ood(datas, targets, threshold):
+def remove_ood(datas, targets, threshold, detoctor_name):
+    print('Detector name:', detector_name)
     dataset = PreprocessedDataset(datas, targets)
     loader = DataLoader(dataset, batch_size=BATCH, shuffle=False)
-    ood_detector_path = Path(join(os.getcwd(), 'results', DATASET_NAME, MODEL_FEATURE, 'High', train_name))
-
+    ood_detector_path = Path(join(os.getcwd(), 'results', DATASET_NAME, MODEL_FEATURE, detoctor_name, train_name))
     ood_detector, _ = get_model(MODEL_NAME, dataset.x.shape, len(np.unique(dataset.y)+1), device)
     ood_detector = ood_detector.to(device)
     ood_detector.load_state_dict(torch.load(join(ood_detector_path, 'best.pt')))
-
     msps = []
     ood_detector.eval()
     with torch.no_grad():
@@ -96,7 +99,6 @@ def remove_ood(datas, targets, threshold):
 
     remove_info = f'T:{threshold}\tID/OOD count|ratio : {n_ind},{n_ood}|{n_ind/len(ind_idxs):.2f},{n_ood/len(ind_idxs):.2f}\n'
     print(remove_info)
-  
     datas_ind, targets_ind = datas[ind_idxs], targets[ind_idxs]
     return datas_ind, targets_ind, remove_info
 
@@ -112,8 +114,7 @@ def run_train():
     datas = deshape(datas, shape_name=SHAPE, chls=CHLS, location=LOCATION)
     
     # remove OOD datas
-    if THRESHOLD > 0:
-        datas, targets, remove_info = remove_ood(datas, targets, THRESHOLD)
+    if THRESHOLD > 0: datas, targets, remove_info = remove_ood(datas, targets, THRESHOLD, DETECTOR)
 
     # Split into train, valid
     X_train, X_valid, Y_train, Y_valid = train_test_split(datas, targets, test_size=0.1, stratify=targets, random_state=random_seed)
@@ -128,7 +129,7 @@ def run_train():
     labels_name = np.unique(validset.y) + 1
 
     # Model
-    model, max_lr = get_model_with_dropout(MODEL_NAME, validset.x.shape, len(labels_name), device, DROPOUT)
+    model, max_lr = get_model(MODEL_NAME, validset.x.shape, len(labels_name), device, DROPOUT)
 
     STEP = len(trainloader)
     STEPS = EPOCH * STEP
@@ -190,8 +191,7 @@ def run_train():
     with open(join(train_path, 'train.txt'), 'w') as file:
         file.write(f'{train_name} {labels_name} train:{tuple(trainset.x.shape)} valid:{tuple(validset.x.shape)}\n'
                    f'Epoch_{EPOCH}\tTrain_Loss|Acc1_Acc{TOPK}\tValid_Loss|Acc1_Acc{TOPK}\n')
-        if THRESHOLD > 0:
-            file.write(remove_info)
+        if THRESHOLD > 0: file.write(remove_info)
 
         lrs = []
         train_losses, train_accs, valid_losses, valid_accs = [], [], [], []
@@ -222,8 +222,7 @@ def run_train():
 
 #--------------------------------------test--------------------------------------------------------
 def run_test(train_path):
-    if not exists(train_path):
-        raise FileNotFoundError(f"File not found: {train_path}, Set the train weight path properly.")
+    if not exists(train_path): raise FileNotFoundError(f"File not found: {train_path}, Set the train weight path properly.")
     
     test_path = Path(join(train_path, 'test'))
     test_path = get_folder(test_path)
@@ -235,18 +234,14 @@ def run_test(train_path):
     datas = deshape(datas, shape_name=SHAPE, chls=CHLS, location=LOCATION)
 
     # remove OOD datas
-    if THRESHOLD > 0:
-        datas, targets, remove_info = remove_ood(datas, targets, THRESHOLD)
+    if THRESHOLD > 0: datas, targets, remove_info = remove_ood(datas, targets, THRESHOLD, DETECTOR)
     
     testset = PreprocessedDataset(datas, targets)
     print(f'testset: {testset.x.shape}')
-
     testloader = DataLoader(testset, batch_size=BATCH, shuffle=False)
-
     labels_name = np.unique(testset.y) + 1
-
     # Model (load parameters)
-    model, _ = get_model_with_dropout(MODEL_NAME, testset.x.shape, len(labels_name), device, DROPOUT)
+    model, _ = get_model(MODEL_NAME, testset.x.shape, len(labels_name), device, DROPOUT)
     model.load_state_dict(torch.load(join(train_path, 'best.pt')))
 
     criterion = nn.CrossEntropyLoss(reduction='none')
@@ -291,12 +286,10 @@ def run_test(train_path):
     test_path.mkdir(parents=True, exist_ok=True)
     with open(join(test_path, 'output.txt'), 'w') as file:
         file.write(f'{train_name} {labels_name} test:{tuple(testset.x.shape)}\n')
-        if THRESHOLD > 0:
-            file.write(remove_info)
+        if THRESHOLD > 0: file.write(remove_info)
         
         losss, accs_1, accs_k, labels, preds, msps, subIDs  = evaluate_test(model, testloader, criterion, device, TOPK)
-        
-        # ----------OOD detection----------
+    
         corrects = accs_1
         
         test_loss = torch.mean(losss.float()).item()
