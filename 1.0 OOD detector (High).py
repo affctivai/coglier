@@ -16,7 +16,7 @@ from utils.constant import *
 from utils.transform import scaling, deshape
 from sklearn.model_selection import train_test_split
 from utils.dataset import load_list_subjects, PreprocessedDataset
-from utils.model import get_model, get_model_with_dropout
+from utils.model import get_model
 from utils.scheduler import CosineAnnealingWarmUpRestarts
 from utils.tools import plot_scheduler, epoch_time, plot_train_result
 from utils.tools import get_roc_auc_score, print_auroc
@@ -33,6 +33,7 @@ parser.add_argument("--feature", dest="feature", action="store", default="DE", h
 parser.add_argument("--batch", dest="batch", type=int, action="store", default=64) # 64, 128
 parser.add_argument("--epoch", dest="epoch", type=int, action="store", default=1) # 1, 50, 100
 parser.add_argument("--dropout", dest="dropout", type=float, action="store", default=0, help='0, 0.2, 0.3, 0.5')
+parser.add_argument("--sr", dest="sr", type=int, action="store", default=128, help='128, 200') # Sampling Rate
 
 parser.add_argument("--column", dest="column", action="store", default="test_acc", help='test_acc, test_loss, roc_auc_score') # 기준 칼럼
 parser.add_argument("--cut", type= int, dest="cut", action="store", default="4") # low group count
@@ -46,6 +47,7 @@ FEATURE = args.feature
 BATCH = args.batch
 EPOCH = args.epoch
 DROPOUT = args.dropout
+SR = args.sr
 
 COLUMN = args.column
 CUT = args.cut
@@ -120,7 +122,7 @@ def run_train():
     trainloader = DataLoader(trainset, batch_size=BATCH, shuffle=True)
     validloader = DataLoader(validset, batch_size=BATCH, shuffle=False)
 
-    model, max_lr = get_model_with_dropout(MODEL_NAME, validset.x.shape, len(labels_name), device, DROPOUT)
+    model, max_lr = get_model(MODEL_NAME, validset.x.shape, len(labels_name), device, DROPOUT, sampling_rate=SR)
     
     criterion = nn.CrossEntropyLoss()
     criterion = criterion.to(device)
@@ -249,7 +251,7 @@ def detect(train_path):
 
     print(f'testset for measuring OOD performance| Highs: {testset.x.shape}, Lows: {lowsset.x.shape}')
     
-    model, _ = get_model(MODEL_NAME, testset.x.shape, len(labels_name), device, DROPOUT)
+    model, _ = get_model(MODEL_NAME, testset.x.shape, len(labels_name), device, DROPOUT, sampling_rate=SR)
     model.load_state_dict(torch.load(join(train_path, 'best.pt')))
 
     criterion = nn.CrossEntropyLoss(reduction='none')

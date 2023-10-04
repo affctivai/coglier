@@ -15,7 +15,7 @@ from utils.constant import *
 from utils.transform import scaling, deshape
 from sklearn.model_selection import train_test_split
 from utils.dataset import load_list_subjects, PreprocessedDataset
-from utils.model import get_model, get_model_with_dropout
+from utils.model import get_model
 from utils.scheduler import CosineAnnealingWarmUpRestarts
 from utils.tools import MyScheduler, plot_scheduler, epoch_time, plot_train_result
 from utils.tools import plot_confusion_matrix, get_roc_auc_score
@@ -33,6 +33,7 @@ parser.add_argument("--feature", dest="feature", action="store", default="DE", h
 parser.add_argument("--batch", dest="batch", type=int, action="store", default=64)
 parser.add_argument("--epoch", dest="epoch", type=int, action="store", default=1) 
 parser.add_argument("--dropout", dest="dropout", type=float, action="store", default=0, help='0, 0.2, 0.3, 0.5')
+parser.add_argument("--sr", dest="sr", type=int, action="store", default=128, help='128, 200') # Sampling Rate
 
 parser.add_argument("--test", dest="test", action="store_true", help='Whether to train data')
 parser.add_argument("--threshold", dest="threshold", type=float, action="store", default=0, help='0.98, 0.95, 0.90, 0.85')
@@ -51,6 +52,7 @@ DROPOUT = args.dropout
 TEST = args.test
 THRESHOLD = args.threshold
 TOPK = args.topk
+SR = args.sr
 
 DETECTOR = args.detector
 PROJECT = f'{DETECTOR}_RR{int(THRESHOLD*100)}'
@@ -80,7 +82,7 @@ def remove_ood(datas, targets, threshold, detoctor_name):
     dataset = PreprocessedDataset(datas, targets)
     loader = DataLoader(dataset, batch_size=BATCH, shuffle=False)
     ood_detector_path = Path(join(os.getcwd(), 'results', DATASET_NAME, MODEL_FEATURE, detoctor_name, train_name))
-    ood_detector, _ = get_model(MODEL_NAME, dataset.x.shape, len(np.unique(dataset.y)+1), device)
+    ood_detector, _ = get_model(MODEL_NAME, dataset.x.shape, len(np.unique(dataset.y)+1), device, sampling_rate=SR)
     ood_detector = ood_detector.to(device)
     ood_detector.load_state_dict(torch.load(join(ood_detector_path, 'best.pt')))
     msps = []
@@ -129,7 +131,7 @@ def run_train():
     labels_name = np.unique(validset.y) + 1
 
     # Model
-    model, max_lr = get_model(MODEL_NAME, validset.x.shape, len(labels_name), device, DROPOUT)
+    model, max_lr = get_model(MODEL_NAME, validset.x.shape, len(labels_name), device, DROPOUT, sampling_rate=SR)
 
     STEP = len(trainloader)
     STEPS = EPOCH * STEP
@@ -241,7 +243,7 @@ def run_test(train_path):
     testloader = DataLoader(testset, batch_size=BATCH, shuffle=False)
     labels_name = np.unique(testset.y) + 1
     # Model (load parameters)
-    model, _ = get_model(MODEL_NAME, testset.x.shape, len(labels_name), device, DROPOUT)
+    model, _ = get_model(MODEL_NAME, testset.x.shape, len(labels_name), device, DROPOUT, sampling_rate=SR)
     model.load_state_dict(torch.load(join(train_path, 'best.pt')))
 
     criterion = nn.CrossEntropyLoss(reduction='none')

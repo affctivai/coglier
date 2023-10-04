@@ -15,7 +15,7 @@ from utils.constant import *
 from utils.transform import scaling, deshape
 from sklearn.model_selection import train_test_split
 from utils.dataset import load_list_subjects, PreprocessedDataset
-from utils.model import get_model, get_model_with_dropout
+from utils.model import get_model
 from utils.scheduler import CosineAnnealingWarmUpRestarts
 from utils.tools import MyScheduler, plot_scheduler, epoch_time, plot_train_result
 from utils.tools import plot_confusion_matrix, get_roc_auc_score
@@ -251,7 +251,7 @@ def run_train():
     labels_name = np.unique(validset.y) + 1
 
     # Model
-    model, max_lr = get_model_with_dropout(MODEL_NAME, validset.x.shape, len(labels_name), device, DROPOUT)
+    model, max_lr = get_model(MODEL_NAME, validset.x.shape, len(labels_name), device, DROPOUT)
 
     STEP = len(trainloader)
     STEPS = EPOCH * STEP
@@ -369,7 +369,7 @@ def run_test(train_path):
     labels_name = np.unique(testset.y) + 1
 
     # Model (load parameters)
-    model, _ = get_model_with_dropout(MODEL_NAME, testset.x.shape, len(labels_name), device, DROPOUT)
+    model, _ = get_model(MODEL_NAME, testset.x.shape, len(labels_name), device, DROPOUT)
     model.load_state_dict(torch.load(join(train_path, 'best.pt')))
 
     criterion = nn.CrossEntropyLoss(reduction='none')
