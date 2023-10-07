@@ -50,7 +50,9 @@ DROPOUT = args.dropout
 COLUMN = args.column
 CUT = args.cut
 TEST = args.test
-PROJECT = f'Low_{CUT}'
+
+# PROJECT = f'Low_{CUT}'
+PROJECT = 'High'
 
 if MODEL_NAME == 'CCNN': SHAPE = 'grid'
 elif MODEL_NAME == 'TSC' or MODEL_NAME == 'EEGNet': SHAPE = 'expand'; FEATURE = 'raw'
@@ -239,12 +241,7 @@ def detect(train_path):
     datas_l = deshape(datas_l, shape_name=SHAPE, chls=CHLS, location=LOCATION)
     lowsset = PreprocessedDataset(datas_l, targets_l)
 
-    testset_length = len(testset)
-    lowsset_length = len(lowsset)
-
-    random_indices = np.random.choice(lowsset_length, testset_length, replace=False)
-    lowsset_subset = Subset(lowsset, random_indices)
-    lowsloader = DataLoader(lowsset_subset, batch_size=BATCH, shuffle=False)
+    lowsloader = DataLoader(lowsset, batch_size=BATCH, shuffle=False)
     testloader = DataLoader(testset, batch_size=BATCH, shuffle=False)
 
     print(f'testset for measuring OOD performance| Highs: {testset.x.shape}, Lows: {lowsset.x.shape}')
@@ -268,7 +265,25 @@ def detect(train_path):
         log = (f'high_loss: {high_loss:.3f}\thigh_acc: {high_acc*100:6.2f}%\troc_auc_score: {get_roc_auc_score(labels, preds)}\n')
 
         log += '----------OOD detection performance----------\n'
-        print(len(msps_higs), len(msps_lows))
+        log += f'All samples  high : low = {len(msps_higs)} : {len(msps_lows)}\n'
+
+        THRESHOLD = 0.60
+
+        tp_higs = (msps_higs >= THRESHOLD).sum().item()
+        sensitivity_higs = round(tp_higs / len(msps_higs), 3)
+        tn_lows = (msps_lows <  THRESHOLD).sum().item()
+        sensitivity_lows = round(tn_lows / len(msps_lows), 3)
+
+        log += f'Threshold = {THRESHOLD}\n'
+        log += f'High set의 민감도 (True Positive Rate): {sensitivity_higs}\n'
+        log += f'Low  set의 민감도 (True Negative Rate): {sensitivity_lows}\n\n'
+
+        ####### high 5: low 1
+        lows_length = len(msps_higs) // 5 
+        random_indices = np.random.choice(len(msps_lows), lows_length, replace=False)
+        msps_lows = msps_lows[random_indices]
+        
+        log += f'Sampling (5:1) high : low = {len(msps_higs)} : {len(msps_lows)}\n'
         
         y_true = torch.cat([torch.ones(len(msps_higs)), torch.zeros(len(msps_lows))])
         y_pred = torch.cat([msps_higs, msps_lows])
@@ -284,8 +299,6 @@ def detect(train_path):
         
         def plot_conf(scale='log'):
             plt.figure(figsize=(10,6))
-            # plt.hist(msps_lows.cpu() , bins=100, alpha=0.5, label='Lows', density=True)
-            # plt.hist(msps_higs.cpu(), bins=100, alpha=0.5, label='Highs', density=True)
             sns.histplot(msps_lows, bins=30, label='Low', alpha=0.4)
             sns.histplot(msps_higs, bins=30, label='High', alpha=0.4)
             if scale=='log':  plt.yscale('log')
@@ -295,12 +308,10 @@ def detect(train_path):
             plt.legend(fontsize=25)
             plt.tight_layout()
             plt.savefig(join(test_path, f'MSP_hist_{scale}.png'), dpi=300)
-        
         plot_conf(scale='log') 
         plot_conf(scale='')
 
     print(f'saved in {test_path}')
-
 #--------------------------------------main--------------------------------------------------------
 # train_path = get_folder(train_path)
 if not TEST: run_train()
