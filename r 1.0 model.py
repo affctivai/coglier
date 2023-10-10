@@ -37,6 +37,7 @@ parser.add_argument("--sr", dest="sr", type=int, action="store", default=128, he
 
 parser.add_argument("--test", dest="test", action="store_true", help='Whether to train data')
 parser.add_argument("--topk", dest="topk", type=int, action="store", default=2)
+parser.add_argument("--z", dest="z", type=float, action="store", default=2.5)
 args = parser.parse_args()
 
 DATASET_NAME = args.dataset
@@ -49,6 +50,7 @@ DROPOUT = args.dropout
 TEST = args.test
 TOPK = args.topk
 SR = args.sr
+Z_THRESHOLD = args.z
 
 PROJECT = f'Base_RP'
 
@@ -76,7 +78,7 @@ def run_train():
     print(f'{DATASET_NAME} {MODEL_NAME} {FEATURE} (shape:{SHAPE},scale:{SCALE}) LABEL:{train_name}')
 
     # Load train data
-    datas, targets = load_list_subjects_rp(DATA, 'train', SUBLIST, LABEL)
+    datas, targets = load_list_subjects_rp(DATA, 'train', SUBLIST, LABEL, z=Z_THRESHOLD)
 
     # online transform
     datas = scaling(datas, scaler_name=SCALE)
@@ -194,7 +196,7 @@ def run_test(train_path):
     test_path = get_folder(test_path)
     
     # Load test data
-    datas, targets = load_list_subjects_rp(DATA, 'test', SUBLIST, LABEL)
+    datas, targets = load_list_subjects_rp(DATA, 'test', SUBLIST, LABEL, z=Z_THRESHOLD)
     # online transform
     datas = scaling(datas, scaler_name=SCALE)
     datas = deshape(datas, shape_name=SHAPE, chls=CHLS, location=LOCATION)

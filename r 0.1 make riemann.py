@@ -99,8 +99,8 @@ def make_dataset(sublists, label):
             Y_test = targets[index_test]
             print(f'f{pro_src} total data: {len(datas)}, train data: {len(X_train)}, test data: {len(X_test)}')
 
-            np.savez(join(train_dir, f'{label}_{sub}_rp'), X=X_train, Y=Y_train)
-            np.savez(join(test_dir, f'{label}_{sub}_rp'), X=X_test, Y=Y_test)
+            np.savez(join(train_dir, f'{label}_{sub}_rp_{int(Z_THRESHOLD*100)}'), X=X_train, Y=Y_train)
+            np.savez(join(test_dir, f'{label}_{sub}_rp_{int(Z_THRESHOLD*100)}'), X=X_test, Y=Y_test)
 
 # -----------------------------------------main---------------------------------------------------
 SUBLIST = [str(i).zfill(2) for i in range(1, SUB_NUM + 1)] # '01', '02', '03', ...

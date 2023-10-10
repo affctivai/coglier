@@ -38,6 +38,7 @@ parser.add_argument("--sr", dest="sr", type=int, action="store", default=128, he
 parser.add_argument("--column", dest="column", action="store", default="test_acc", help='test_acc, test_loss, roc_auc_score') # 기준 칼럼
 parser.add_argument("--cut", type= int, dest="cut", action="store", default="4") # low group count
 parser.add_argument("--test", dest="test", action="store_true") # Whether to train data
+parser.add_argument("--threshold", dest="threshold", type=float, action="store", default=0.95, help='0.05~0.95') # Threshold for test
 args = parser.parse_args()
 
 DATASET_NAME = args.dataset
@@ -52,9 +53,10 @@ SR = args.sr
 COLUMN = args.column
 CUT = args.cut
 TEST = args.test
+THRESHOLD = args.threshold
 
-# PROJECT = f'Low_{CUT}'
-PROJECT = 'High'
+PROJECT = f'Low_{CUT}'
+# PROJECT = 'High'
 
 if MODEL_NAME == 'CCNN': SHAPE = 'grid'
 elif MODEL_NAME == 'TSC' or MODEL_NAME == 'EEGNet': SHAPE = 'expand'; FEATURE = 'raw'
@@ -268,8 +270,6 @@ def detect(train_path):
 
         log += '----------OOD detection performance----------\n'
         log += f'All samples  high : low = {len(msps_higs)} : {len(msps_lows)}\n'
-
-        THRESHOLD = 0.60
 
         tp_higs = (msps_higs >= THRESHOLD).sum().item()
         sensitivity_higs = round(tp_higs / len(msps_higs), 3)

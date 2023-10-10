@@ -78,7 +78,7 @@ train_path = Path(join(os.getcwd(), 'results', DATASET_NAME, MODEL_FEATURE, PROJ
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 def remove_ood(datas, targets, threshold, detoctor_name):
-    print('Detector name:', detector_name)
+    print('Detector name:', detoctor_name)
     dataset = PreprocessedDataset(datas, targets)
     loader = DataLoader(dataset, batch_size=BATCH, shuffle=False)
     ood_detector_path = Path(join(os.getcwd(), 'results', DATASET_NAME, MODEL_FEATURE, detoctor_name, train_name))
