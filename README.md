@@ -79,7 +79,12 @@ python ./2.0\ Base_Remove.py --dataset=GAMEEMO --label=v --model=CCNN --feature=
 ### **4) Compare with the Baseline**
 In **2.0 Base_Remove.py**, `threshold==0` is equivalent to Baseline.
 
+---
+
 ## Results
 ![Classification Accuracy and AUROC of Ours and Baseline](src/results.png)
+
+---
+
 ## LICENSE
 This repository has a MIT license, as found in the [LICENSE](./LICENSE) file.
