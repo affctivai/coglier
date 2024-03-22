@@ -1,5 +1,5 @@
 # Detecting Concept Shifts under Different Levels of Self-awareness on Labeling
-
+![Concept Shift under Different Levels of Self-awareness on Labeling](src/concept_shift.jpg)
 
 ## Dataset 
 - **SEED** : 3 class *(netral, positive, negative)*
@@ -29,6 +29,7 @@ train and test data are split for reliable generalization evaluation.<br>
 ---
 
 ## Our Method
+![Model Overview](src/model_overview.jpg)
 
 ### **1) Subject-dependent Train, Test**  
 **0.2 subdepend.py**: For each subject, **subdepend.py** is executed.
@@ -78,5 +79,7 @@ python ./2.0\ Base_Remove.py --dataset=GAMEEMO --label=v --model=CCNN --feature=
 ### **4) Compare with the Baseline**
 In **2.0 Base_Remove.py**, `threshold==0` is equivalent to Baseline.
 
+## Results
+![Classification Accuracy and AUROC of Ours and Baseline](src/results.png)
 ## LICENSE
 This repository has a MIT license, as found in the [LICENSE](./LICENSE) file.
