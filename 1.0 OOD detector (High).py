@@ -1,14 +1,13 @@
 import os
-from os.path import join, exists
+from os.path import join,exists
 import time
 from pathlib import Path
 import numpy as np
-import matplotlib.pyplot as plt
 import pandas as pd
 import argparse
 
 import torch
-from torch.utils.data import DataLoader, Subset
+from torch.utils.data import DataLoader
 import torch.optim as optim
 import torch.nn as nn
 
@@ -18,17 +17,16 @@ from sklearn.model_selection import train_test_split
 from utils.dataset import load_list_subjects, PreprocessedDataset
 from utils.model import get_model
 from utils.scheduler import CosineAnnealingWarmUpRestarts
-from utils.tools import plot_scheduler, epoch_time, plot_train_result
-from utils.tools import get_roc_auc_score, print_auroc
+from utils.tools import epoch_time, print_auroc, get_roc_auc_score
 from utils.tools import seed_everything, get_folder
 
 random_seed = 42
 seed_everything(random_seed)
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--dataset", dest="dataset", action="store", default="GAMEEMO", help='GAMEEMO, SEED, SEED_IV, DEAP')
-parser.add_argument("--label", dest="label", action="store", default="v", help='v, a :GAMEEMO/DEAP')
-parser.add_argument("--model", dest="model", action="store", default="CCNN", help='CCNN, TSC, EEGNet, DGCNN')
+parser.add_argument("--dataset", dest="dataset", action="store", default="GAMEEMO", help='GAMEEMO, SEED, SEED_IV')
+parser.add_argument("--label", dest="label", action="store", default="v", help='v, a :GAMEEMO')
+parser.add_argument("--model", dest="model", action="store", default="CCNN", help='CCNN, TSC, DGCNN')
 parser.add_argument("--feature", dest="feature", action="store", default="DE", help='DE, PSD, raw')
 parser.add_argument("--batch", dest="batch", type=int, action="store", default=64) # 64, 128
 parser.add_argument("--epoch", dest="epoch", type=int, action="store", default=1) # 1, 50, 100
@@ -37,8 +35,6 @@ parser.add_argument("--sr", dest="sr", type=int, action="store", default=128, he
 
 parser.add_argument("--column", dest="column", action="store", default="test_acc", help='test_acc, test_loss, roc_auc_score') # 기준 칼럼
 parser.add_argument("--cut", type= int, dest="cut", action="store", default="4") # low group count
-parser.add_argument("--test", dest="test", action="store_true") # Whether to train data
-parser.add_argument("--threshold", dest="threshold", type=float, action="store", default=0.95, help='0.05~0.95') # Threshold for test
 args = parser.parse_args()
 
 DATASET_NAME = args.dataset
@@ -52,14 +48,11 @@ SR = args.sr
 
 COLUMN = args.column
 CUT = args.cut
-TEST = args.test
-THRESHOLD = args.threshold
 
 PROJECT = f'Low_{CUT}'
-# PROJECT = 'High'
 
 if MODEL_NAME == 'CCNN': SHAPE = 'grid'
-elif MODEL_NAME == 'TSC' or MODEL_NAME == 'EEGNet': SHAPE = 'expand'; FEATURE = 'raw'
+elif MODEL_NAME == 'TSC': SHAPE = 'expand'; FEATURE = 'raw'
 elif MODEL_NAME == 'DGCNN': SHAPE = None
 if FEATURE == 'DE': SCALE = None
 elif FEATURE == 'PSD': SCALE = 'log'
@@ -67,7 +60,7 @@ elif FEATURE == 'raw': SCALE = 'standard'
 if LABEL == 'a':    train_name = 'arousal'
 elif LABEL == 'v':  train_name = 'valence'
 else:               train_name = 'emotion'
-if MODEL_NAME == 'EEGNet' or MODEL_NAME == 'TSC': MODEL_FEATURE = MODEL_NAME
+if MODEL_NAME == 'TSC': MODEL_FEATURE = MODEL_NAME
 else: MODEL_FEATURE = '_'.join([MODEL_NAME, FEATURE])
 
 DATAS, SUB_NUM, CHLS, LOCATION = load_dataset_info(DATASET_NAME)
@@ -76,7 +69,6 @@ DATA = join(DATAS, FEATURE)
 train_path = Path(join(os.getcwd(), 'results', DATASET_NAME, MODEL_FEATURE, PROJECT, train_name))
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-# After subdepend.py-----------------------------------------
 def get_ID():
     subdepend_result_path = Path(join(os.getcwd(), 'results', DATASET_NAME, MODEL_FEATURE, 'Subdepend'))
     print('Read subject-dependent result from: ', subdepend_result_path)
@@ -102,12 +94,10 @@ HIGS, LOWS = get_ID()
 print(train_name, 'HIGS', len(HIGS),'명', HIGS)
 print(train_name, 'LOWS', len(LOWS),'명', LOWS)
 
-# Load data
 datas, targets = load_list_subjects(DATA, 'train', HIGS, LABEL)
 datas = scaling(datas, scaler_name=SCALE)
 datas = deshape(datas, shape_name=SHAPE, chls=CHLS, location=LOCATION)
 
-# Split into train, valid, test
 X_train, X, Y_train, Y = train_test_split(datas, targets, test_size=0.1, stratify=targets, random_state=random_seed)
 X_valid, X_test, Y_valid, Y_test = train_test_split(X, Y, test_size=0.5, stratify=Y, random_state=random_seed)
 
@@ -119,7 +109,6 @@ print(f'High-trainset: {trainset.x.shape} \t High-validset: {validset.x.shape}')
 labels_name = np.unique(validset.y) + 1
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-#-------------------------------------train--------------------------------------------------------
 def run_train():
     print(f'{DATASET_NAME} {MODEL_NAME} {FEATURE} (shape:{SHAPE},scale:{SCALE}) LABEL:{train_name}')
 
@@ -200,14 +189,12 @@ def run_train():
             log = f'{epoch+1:03} {epoch_secs:2d}s \t {train_loss:1.3f}\t{train_acc*100:6.2f}%\t{valid_loss:1.3f}\t{valid_acc*100:6.2f}%'
             file.write(log + '\n')
             print(log)
-    plot_scheduler(lrs, save=True, path=train_path)
-    plot_train_result(train_losses, valid_losses, train_accs, valid_accs, EPOCH, size=(9, 5), path=train_path)
     print(f"model weights saved in '{join(train_path,'best.pt')}'")
 
 #--------------------------------------test--------------------------------------------------------
 def evaluate_test(model, loader, criterion, device):
     losss, accs,  = [], []
-    labels, preds, msps, subIDs = [], [], [], []
+    labels, preds, msps = [], [], []
     model.eval() 
     with torch.no_grad():
         for (x, y, subID) in loader:
@@ -224,14 +211,12 @@ def evaluate_test(model, loader, criterion, device):
             labels.append(y.cpu())
             preds.append(maxidx.cpu())
             msps.append(msp.cpu())
-            subIDs.append(subID.cpu())
     accs = torch.cat(accs, dim=0)
     losss = torch.cat(losss, dim=0)    
     labels = torch.cat(labels, dim=0)
     preds = torch.cat(preds, dim=0)
     msps = torch.cat(msps, dim=0)
-    subIDs = torch.cat(subIDs, dim=0)
-    return losss, accs, labels, preds, msps, subIDs
+    return losss, accs, labels, preds, msps
 
 def detect(train_path):
     if not exists(train_path): raise FileNotFoundError(f"File not found: {train_path}, Set the train weight path properly.")
@@ -248,8 +233,6 @@ def detect(train_path):
     lowsloader = DataLoader(lowsset, batch_size=BATCH, shuffle=False)
     testloader = DataLoader(testset, batch_size=BATCH, shuffle=False)
 
-    print(f'testset for measuring OOD performance| Highs: {testset.x.shape}, Lows: {lowsset.x.shape}')
-    
     model, _ = get_model(MODEL_NAME, testset.x.shape, len(labels_name), device, DROPOUT, sampling_rate=SR)
     model.load_state_dict(torch.load(join(train_path, 'best.pt')))
 
@@ -259,62 +242,29 @@ def detect(train_path):
     test_path.mkdir(parents=True, exist_ok=True)
     with open(join(test_path, 'output.txt'), 'w') as file:
         file.write(f'{train_name} {labels_name} high:{tuple(testset.x.shape)} low:{tuple(lowsset.x.shape)}\tcol:{COLUMN}\n'
-                   f'LOWS {len(LOWS)}명 {LOWS}\nHIGS {len(HIGS)}명 {HIGS}\n')
+                   f'LOWS {len(LOWS)} {LOWS}\nHIGS {len(HIGS)} {HIGS}\n')
 
-        losss, accs, labels, preds, msps_higs, _ = evaluate_test(model, testloader, criterion, device)
-        _,        _,      _,     _, msps_lows, _ = evaluate_test(model, lowsloader, criterion, device)
+        losss, accs, labels, preds, msps_higs = evaluate_test(model, testloader, criterion, device)
+        _,        _,      _,     _, msps_lows = evaluate_test(model, lowsloader, criterion, device)
         
         high_loss, high_acc = torch.mean(losss.float()), torch.mean(accs.float())
  
         log = (f'high_loss: {high_loss:.3f}\thigh_acc: {high_acc*100:6.2f}%\troc_auc_score: {get_roc_auc_score(labels, preds)}\n')
 
-        log += '----------OOD detection performance----------\n'
-        log += f'All samples  high : low = {len(msps_higs)} : {len(msps_lows)}\n'
-
-        tp_higs = (msps_higs >= THRESHOLD).sum().item()
-        sensitivity_higs = round(tp_higs / len(msps_higs), 3)
-        tn_lows = (msps_lows <  THRESHOLD).sum().item()
-        sensitivity_lows = round(tn_lows / len(msps_lows), 3)
-
-        log += f'Threshold = {THRESHOLD}\n'
-        log += f'High set의 민감도 (True Positive Rate): {sensitivity_higs}\n'
-        log += f'Low  set의 민감도 (True Negative Rate): {sensitivity_lows}\n\n'
-
-        ####### high 5: low 1
         lows_length = len(msps_higs) // 5 
         random_indices = np.random.choice(len(msps_lows), lows_length, replace=False)
         msps_lows = msps_lows[random_indices]
         
-        log += f'Sampling (5:1) high : low = {len(msps_higs)} : {len(msps_lows)}\n'
-        
         y_true = torch.cat([torch.ones(len(msps_higs)), torch.zeros(len(msps_lows))])
         y_pred = torch.cat([msps_higs, msps_lows])
 
-        log += print_auroc(y_true, y_pred, percent=0.95, path=test_path)
+        log += print_auroc(y_true, y_pred)
 
         file.write(log)
         print(log)
 
-        # plot confidence histogram---------------------------------------------------------------
-        import seaborn as sns
-        from scipy.stats import norm
-        
-        def plot_conf(scale='log'):
-            plt.figure(figsize=(10,6))
-            sns.histplot(msps_lows, bins=30, label='Low', alpha=0.4)
-            sns.histplot(msps_higs, bins=30, label='High', alpha=0.4)
-            if scale=='log':  plt.yscale('log')
-            plt.title("Distribution of MSP for ID(High) vs OOD(Low)", fontsize=18)
-            plt.xlabel('Maximum Softmax Probability', fontsize=15)
-            plt.ylabel("Log-Scaled Frequency", fontsize=15)
-            plt.legend(fontsize=25)
-            plt.tight_layout()
-            plt.savefig(join(test_path, f'MSP_hist_{scale}.png'), dpi=300)
-        plot_conf(scale='log') 
-        plot_conf(scale='')
-
     print(f'saved in {test_path}')
 #--------------------------------------main--------------------------------------------------------
-# train_path = get_folder(train_path)
-if not TEST: run_train()
+train_path = get_folder(train_path)
+run_train()
 detect(train_path)

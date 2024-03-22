@@ -6,7 +6,6 @@ import numpy as np
 import argparse
 
 import torch
-# from torchsummary import summary
 from torch.utils.data import DataLoader
 import torch.optim as optim
 import torch.nn as nn
@@ -15,24 +14,24 @@ from utils.constant import *
 from utils.transform import scaling, deshape
 from sklearn.model_selection import train_test_split
 from utils.dataset import load_per_subject, PreprocessedDataset_
-from utils.model import get_model, get_model_with_dropout
+from utils.model import get_model
 from utils.scheduler import CosineAnnealingWarmUpRestarts
-from utils.tools import plot_scheduler, epoch_time, plot_train_result
-from utils.tools import plot_confusion_matrix, get_roc_auc_score
-from utils.tools import seed_everything, get_folder
+from utils.tools import epoch_time
+from utils.tools import get_roc_auc_score
+from utils.tools import seed_everything
 
 random_seed = 42
 seed_everything(random_seed)
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--dataset", dest="dataset", action="store", default="GAMEEMO", help='GAMEEMO, SEED, SEED_IV, DEAP')
+parser.add_argument("--dataset", dest="dataset", action="store", default="GAMEEMO", help='GAMEEMO, SEED, SEED_IV')
 parser.add_argument('--subID', type=str, default = '01')
-parser.add_argument("--label", type=str, default='v', help='v, a :GAMEEMO/DEAP')
-parser.add_argument("--model", dest="model", action="store", default="CCNN", help='CCNN, TSC, EEGNet, DGCNN')
+parser.add_argument("--label", type=str, default='v', help='v, a :GAMEEMO')
+parser.add_argument("--model", dest="model", action="store", default="CCNN", help='CCNN, TSC, DGCNN')
 parser.add_argument("--feature", dest="feature", action="store", default="DE", help='DE, PSD, raw')
 parser.add_argument('--batch', type=int, default = 64)
 parser.add_argument('--epoch', type=int, default = 3)
-parser.add_argument('--project_name', type=str, default = 'Subdepend')  # save result
+parser.add_argument('--project_name', type=str, default = 'Subdepend')
 parser.add_argument('--dropout', dest="dropout", type=float, default = 0.5)
 args = parser.parse_args()
 
@@ -49,7 +48,7 @@ DROPOUT = args.dropout
 DATAS, SUB_NUM, CHLS, LOCATION = load_dataset_info(DATASET_NAME)
 
 if MODEL_NAME == 'CCNN': SHAPE = 'grid'
-elif MODEL_NAME == 'TSC' or MODEL_NAME == 'EEGNet':
+elif MODEL_NAME == 'TSC':
     SHAPE = 'expand'
     FEATURE = 'raw'
 elif MODEL_NAME == 'DGCNN': SHAPE = None
@@ -64,20 +63,17 @@ else:               train_name = 'emotion'
 
 DATA = join(DATAS, FEATURE)
 
-if MODEL_NAME == 'EEGNet' or MODEL_NAME == 'TSC': MODEL_FEATURE = MODEL_NAME
+if MODEL_NAME == 'TSC': MODEL_FEATURE = MODEL_NAME
 else: MODEL_FEATURE = '_'.join([MODEL_NAME, FEATURE])
 
 train_path = Path(join(os.getcwd(), 'results', DATASET_NAME, MODEL_FEATURE, PROJECT, SUB, train_name))
 
 #-------------------------------------------------train---------------------------------------------------------------
-# Load train data
 datas, targets = load_per_subject(DATA, 'train', SUB, LABEL)
 
-# online transform
 datas = scaling(datas, scaler_name=SCALE)
 datas = deshape(datas, shape_name=SHAPE, chls=CHLS, location=LOCATION)
 
-# Split into train, valid
 X_train, X_valid, Y_train, Y_valid = train_test_split(datas, targets, test_size=0.1, stratify=targets, random_state=random_seed)
 
 trainset = PreprocessedDataset_(X_train, Y_train)
@@ -90,9 +86,7 @@ validloader = DataLoader(validset, batch_size=BATCH, shuffle=False)
 labels_name = validset.label.tolist()
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-# Model
-model, max_lr = get_model_with_dropout(MODEL_NAME, validset.x.shape, len(labels_name), device, DROPOUT)
-# print(summary(model, trainset.x.shape[1:]))
+model, max_lr = get_model(MODEL_NAME, validset.x.shape, len(labels_name), device, DROPOUT)
 
 STEP = len(trainloader)
 STEPS = EPOCH * STEP
@@ -142,7 +136,6 @@ train_losses, train_accs = [],[]
 valid_losses, valid_accs = [],[]
 best_valid_loss = float('inf')
 scaler = torch.cuda.amp.GradScaler()
-# ----------------------------------------run-------------------------------------------------------
 train_path.mkdir(parents=True, exist_ok=True)
 
 with open(join(train_path, 'train.txt'), 'w') as file:
@@ -168,14 +161,9 @@ with open(join(train_path, 'train.txt'), 'w') as file:
         log = f'{epoch+1:02} {epoch_secs:2d}s \t {train_loss:1.3f}\t{train_acc*100:6.2f}%\t{valid_loss:1.3f}\t{valid_acc*100:6.2f}%'
         file.write(log + '\n')
         print(log)
-# plot_scheduler(lrs, save=True, path=train_path)
-plot_train_result(train_losses, valid_losses, train_accs, valid_accs, EPOCH, size=(9, 5), path=train_path)
 print(f"model weights saved in '{join(train_path,'best.pt')}'")
 
-#--------------------------------------test-------------------------------------------------------
-# Load test data
 datas, targets = load_per_subject(DATA, 'test', SUB, LABEL)
-# online transform
 datas = scaling(datas, scaler_name=SCALE)
 datas = deshape(datas, shape_name=SHAPE, chls=CHLS, location=LOCATION)
 testset = PreprocessedDataset_(datas, targets)
@@ -211,10 +199,7 @@ with open(join(train_path, 'test.txt'), 'w') as file:
 
     log = f"'test_loss':{test_loss:.3f},'test_acc':{test_acc*100:.2f},"
     log += f"'roc_auc_score':{get_roc_auc_score(labels, preds)}"
-    # log += '\n'+classification_report(labels, preds)
     file.write(log)
-    # file.write(f'{LABEL}:{labels_name}\t BATCH {BATCH}\n{DNAME}  testset:{tuple(testset.x.shape)}\n')
     print(log)
 
-plot_confusion_matrix(labels, preds, labels_name, path=train_path, lbname=train_name, title=f'Subject{SUB} {train_name}')
 print(f'saved in {train_path}')

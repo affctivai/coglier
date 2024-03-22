@@ -1,14 +1,10 @@
 import os
 from os.path import join
-import pandas as pd
 import numpy as np
 from scipy import io
 import re
 import argparse
 
-#  neutral, sad, fear, and happy
-# segmentation x: (samples, 14, segment size), y: (samples, 2)  ## [label, subID]
-## if window: 256, stride: 128 -> x: (15718, 62, 256), y: (15718, 2)
 def save_datas_seg(window, stride, data_dir, saved_dir):
     print('Segmentation x: (samples, 62, segment size), y: (samples, 2)')
 
@@ -43,7 +39,7 @@ def save_datas_seg(window, stride, data_dir, saved_dir):
                 while idx + window < time_size:
                     seg = data[:, idx : idx+window]
                     x.append(seg)
-                    y.append([labels[trial_id], subidx]) # 데이터마다 subID
+                    y.append([labels[trial_id], subidx])
                     idx += stride
         x = np.array(x)
         x = np.array(x, dtype='float16')
@@ -51,15 +47,11 @@ def save_datas_seg(window, stride, data_dir, saved_dir):
         y = np.array(y)
         
         print(f'EEG:{x.shape} label:{y.shape}')
-        # 저장 폴더에 subject 별로 npz 파일 생성됨
         os.makedirs(saved_dir, exist_ok=True)
         np.savez(join(saved_dir, str(subidx).zfill(2)), x=x, y=y) 
     print(f'saved in {saved_dir}')
 
 from utils.transform import BandDifferentialEntropy
-# segmentation -> DE(BandDifferentialEntropy)
-# x: (samples, 62, segment size) -> (samples, 62, 4(frequency))   y: (samples, 2) ## [label, subID]
-## if window: 256, stride: 128 -> x: (15718, 62, 4), y: (15718, 2)
 def save_datas_seg_DE(window, stride, data_dir, saved_dir):
     print('Segmentation with DE x: (samples, 62, 4), y: (samples, 2)')
 
@@ -96,13 +88,12 @@ def save_datas_seg_DE(window, stride, data_dir, saved_dir):
                 while idx + window < time_size:
                     seg = data[:, idx : idx+window]
                     x.append(bde.apply(seg))
-                    y.append([labels[trial_id], subidx]) # 데이터마다 subID
+                    y.append([labels[trial_id], subidx])
                     idx += stride
         x = np.array(x)
         y = np.array(y)
         
         print(f'EEG:{x.shape} label:{y.shape}')
-        # 저장 폴더에 subject 별로 npz 파일 생성됨
         os.makedirs(saved_dir, exist_ok=True)
         np.savez(join(saved_dir, str(subidx).zfill(2)), x=x, y=y) 
     print(f'saved in {saved_dir}')
@@ -145,25 +136,23 @@ def save_datas_seg_PSD(window, stride, data_dir, saved_dir):
                 while idx + window < time_size:
                     seg = data[:, idx : idx+window]
                     x.append(psd.apply(seg))
-                    y.append([labels[trial_id], subidx]) # 데이터마다 subID
+                    y.append([labels[trial_id], subidx])
                     idx += stride
         x = np.array(x)
         y = np.array(y)
         
         print(f'EEG:{x.shape} label:{y.shape}')
-        # 저장 폴더에 subject 별로 npz 파일 생성됨
         os.makedirs(saved_dir, exist_ok=True)
         np.savez(join(saved_dir, str(subidx).zfill(2)), x=x, y=y) 
     print(f'saved in {saved_dir}')
 
 
 # -----------------------------------------save-data---------------------------------------------------
-# source data folder location
 parser = argparse.ArgumentParser()
-parser.add_argument("--src_dir", type=str, default="/mnt/data") # source data folder location
+parser.add_argument("--src_dir", type=str, default="/mnt/data")
 parser.add_argument("--window", type=int, default=400)
 parser.add_argument("--stride", type=int, default=200)
-parser.add_argument("--method", type=str, default="seg", help='noseg, seg, PSD, DE')
+parser.add_argument("--method", type=str, default="seg", help='seg, PSD, DE')
 args = parser.parse_args()
 
 SRC = args.src_dir
@@ -173,39 +162,11 @@ METHOD = args.method
 src_dir = join(SRC, 'SEED', 'Preprocessed_EEG')
 saved_dir = join(os.getcwd(), 'datasets', "SEED", 'npz', "Preprocessed")
 
-if METHOD == 'noseg':
-    save_datas_noseg(src_dir, join(saved_dir, 'no_seg'))
-
-elif METHOD == 'seg':
+if METHOD == 'seg':
     save_datas_seg(WINDOW, STRIDE, src_dir,join(saved_dir, 'seg'))
 
 elif METHOD == 'PSD':
     save_datas_seg_PSD(WINDOW, STRIDE, src_dir, join(saved_dir, 'seg_PSD'))
 
-elif METHOD == 'DE': # DE calculation takes a time. be careful
+elif METHOD == 'DE':
     save_datas_seg_DE(WINDOW, STRIDE, src_dir, join(saved_dir, 'seg_DE'))
-
-# -----------------------------------------check---------------------------------------------------
-# Save the bar graph of the number of labels per class
-# from utils.tools import getFromnpz, plot_VA
-
-# load data
-# saved_dir = join(DATAS, 'npz', 'seg_DE')
-
-# sublists = [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15]
-
-# datas_v, targets_v = getFromnpz(saved_dir, sublists, out=False, cla='v')
-# datas_a, targets_a = getFromnpz(saved_dir, sublists, out=False, cla='a')
-# vals, count_v = np.unique(targets_v[:, 0], return_counts=True)
-# aros, count_a = np.unique(targets_a[:, 0], return_counts=True)
-
-# subIDs, countss_v = np.unique(targets_v[:, 1], return_counts=True)
-# subIDs, countss_a = np.unique(targets_a[:, 1], return_counts=True)
-
-# print(f'data_v shape: {datas_v.shape} target_v shape: {targets_v.shape}')
-# print(f'data_a shape: {datas_a.shape} target_a shape: {targets_a.shape}')
-# print(f'valence {vals} \t {count_v}')
-# print(f'arousal {aros} \t {count_a}')
-# print(f'Num of data per subject {subIDs} \t {countss_v}') # subIDs
-
-# plot_VA(vals, count_v, aros, count_a, path=join(DATAS,'GAMEEMO_npz','seg_DE.png'))

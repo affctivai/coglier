@@ -12,8 +12,8 @@ from pyriemann.clustering import Potato
 
 # -----------------------------------------Setting---------------------------------------------------
 parser = argparse.ArgumentParser()
-parser.add_argument("--dataset", dest="dataset", action="store", default="GAMEEMO", help='GAMEEMO, SEED, SEED_IV, DEAP')
-parser.add_argument("--label", dest="label", action="store", default="v", help='v, a :GAMEEMO/DEAP')
+parser.add_argument("--dataset", dest="dataset", action="store", default="GAMEEMO", help='GAMEEMO, SEED, SEED_IV')
+parser.add_argument("--label", dest="label", action="store", default="v", help='v, a :GAMEEMO')
 parser.add_argument("--z", dest="z", type=float, action="store", default=2.5, help='z threshold for riemannian potato')
 args = parser.parse_args()
 
@@ -30,9 +30,6 @@ elif DATASET_NAME == 'SEED':
 elif DATASET_NAME == 'SEED_IV':
     DATAS = join(os.getcwd(),"datasets", "SEED_IV", "npz")
     SUB_NUM = SEED_IV_SUBNUM
-elif DATASET_NAME == 'DEAP':
-    DATAS = join(os.getcwd(),"datasets", "DEAP", "npz")
-    SUB_NUM = DEAP_SUBNUM
 else:
     print("Unknown Dataset")
     exit(1)
@@ -49,15 +46,24 @@ def make_dataset(sublists, label):
         index = np.arange(len(targets))
         # Make Dataset  ## train 90 : test 10
         index_train, index_test, Y_train, Y_test = train_test_split(index, targets, test_size=0.1, stratify=targets, random_state=random_seed)
-        print(f'num of train: {len(Y_train)} \t num of test: {len(Y_test)}\n')
+        if len(Y_train) >= 5000:
+            rp_index, _, y_rp_train, _ = train_test_split(index_train, Y_train, test_size=0.8, stratify=Y_train, random_state=random_seed)
+            print(f'num of rp train: {len(y_rp_train)} \t num of train: {len(Y_train)} \t num of test: {len(Y_test)}\n')
+        else:
+            print(f'num of train: {len(Y_train)} \t num of test: {len(Y_test)}\n')
+            
 
         # fit pyriemann
         raws = raws.astype('float64')
-        covs = Covariances(estimator='sch').transform(raws)
+        covs = Covariances(estimator='lwf').transform(raws)
+        if len(Y_train) >= 5000:
+            cov_rp = covs[rp_index]
+        else:
+            cov_rp = covs[index_train]
         cov_train = covs[index_train]
         cov_test = covs[index_test]
         
-        rp_train.extend(cov_train)
+        rp_train.extend(cov_rp)
         cov_trains[sub] = cov_train
         cov_tests[sub] = cov_test
         index_trains[sub] = index_train
@@ -65,8 +71,10 @@ def make_dataset(sublists, label):
     
     rp_train = np.array(rp_train)
     print(f'Fit riemannian potato size: {len(rp_train)}')
+
     rp = Potato(metric='riemann', threshold=Z_THRESHOLD)
     rp.fit(rp_train)
+    print("Fit riemannian potato finished")
 
     for sub in sublists:
         cov_train = cov_trains[sub]

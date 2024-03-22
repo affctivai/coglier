@@ -13,23 +13,6 @@ GAMEEMO_LOCATION = [['-', '-', '-', '-', '-', '-', '-', '-', '-'],
     ['-', '-', '-', 'O1', '-', 'O2', '-', '-', '-']]
 GAMEEMO_SUBNUM = 28
 
-
-DEAP_CHLS = [
-    'FP1', 'AF3', 'F3', 'F7', 'FC5', 'FC1', 'C3', 'T7', 'CP5', 'CP1', 'P3',
-    'P7', 'PO3', 'O1', 'OZ', 'PZ', 'FP2', 'AF4', 'FZ', 'F4', 'F8', 'FC6', 'FC2',
-    'CZ', 'C4', 'T8', 'CP6', 'CP2', 'P4', 'P8', 'PO4', 'O2']
-DEAP_LOCATION = [['-', '-', '-', 'FP1', '-', 'FP2', '-', '-', '-'],
-                      ['-', '-', '-', 'AF3', '-', 'AF4', '-', '-', '-'],
-                      ['F7', '-', 'F3', '-', 'FZ', '-', 'F4', '-', 'F8'],
-                      ['-', 'FC5', '-', 'FC1', '-', 'FC2', '-', 'FC6', '-'],
-                      ['T7', '-', 'C3', '-', 'CZ', '-', 'C4', '-', 'T8'],
-                      ['-', 'CP5', '-', 'CP1', '-', 'CP2', '-', 'CP6', '-'],
-                      ['P7', '-', 'P3', '-', 'PZ', '-', 'P4', '-', 'P8'],
-                      ['-', '-', '-', 'PO3', '-', 'PO4', '-', '-', '-'],
-                      ['-', '-', '-', 'O1', 'OZ', 'O2', '-', '-', '-']]
-DEAP_SUBNUM = 32
-
-
 SEED_LABELS = ['negative', 'neutral', 'positive'] 
 SEED_CHLS = [
     'FP1', 'FPZ', 'FP2', 'AF3', 'AF4', 'F7', 'F5', 'F3', 'F1', 'FZ', 'F2', 'F4',
@@ -71,7 +54,6 @@ SEED_IV_LOCATION = [
     ['-', '-', 'CB1', 'O1', 'OZ', 'O2', 'CB2', '-', '-']]
 SEED_IV_SUBNUM = 15
 
-
 def load_dataset_info(dataset):
     if dataset == 'GAMEEMO':
         DATAS = join(os.getcwd(),"datasets", dataset, "npz", "Projects")
@@ -90,12 +72,6 @@ def load_dataset_info(dataset):
         SUB_NUM = SEED_IV_SUBNUM
         CHLS = SEED_IV_CHLS
         LOCATION = SEED_IV_LOCATION
-        return DATAS, SUB_NUM, CHLS, LOCATION
-    elif dataset == 'DEAP':
-        DATAS = join(os.getcwd(),"datasets", dataset, "npz", "Projects")
-        SUB_NUM = DEAP_SUBNUM
-        CHLS = DEAP_CHLS
-        LOCATION = DEAP_LOCATION
         return DATAS, SUB_NUM, CHLS, LOCATION
     else:
         print("Unknown Dataset")

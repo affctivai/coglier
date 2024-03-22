@@ -3,30 +3,22 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 '''
-# LSTM
-Book: Zhang X, Yao L. Deep Learning for EEG-Based Brain-Computer Interfaces: Representations, Algorithms and Applications[M]. 2021.
-URL: https://www.worldscientific.com/worldscibooks/10.1142/q0282#t=aboutBook
-Related Project: https://github.com/xiangzhang1015/Deep-Learning-for-BCI/blob/master/pythonscripts/4-1-1_LSTM.py
+References
 
-# CCNN
-Paper: Yang Y, Wu Q, Fu Y, et al. Continuous convolutional neural network with 3D input for EEG-based emotion recognition[C]//International Conference on Neural Information Processing. Springer, Cham, 2018: 433-443.
-URL: https://link.springer.com/chapter/10.1007/978-3-030-04239-4_39
-Related Project: https://github.com/ynulonger/DE_CNN
+[1] CCNN: Yang Y, Wu Q, Fu Y, et al. Continuous convolutional neural network with 3D input for EEG-based emotion recognition[C]//International Conference on Neural Information Processing. Springer, Cham, 2018: 433-443.
+    URL: https://link.springer.com/chapter/10.1007/978-3-030-04239-4_39
+    Related Project: https://github.com/ynulonger/DE_CNN
 
-# TSCeption
-Paper: Ding Y, Robinson N, Zhang S, et al. Tsception: Capturing temporal dynamics and spatial asymmetry from EEG for emotion recognition[J]. arXiv preprint arXiv:2104.02935, 2021.
-URL: https://arxiv.org/abs/2104.02935
-Related Project: https://github.com/yi-ding-cs/TSception
+[2] TSCeption: Ding Y, Robinson N, Zhang S, et al. Tsception: Capturing temporal dynamics and spatial asymmetry from EEG for emotion recognition[J]. arXiv preprint arXiv:2104.02935, 2021.
+    URL: https://arxiv.org/abs/2104.02935
+    Related Project: https://github.com/yi-ding-cs/TSception
 
-# EEGNet 
-Paper: Lawhern V J, Solon A J, Waytowich N R, et al. EEGNet: a compact convolutional neural network for EEG-based brain-computer interfaces[J]. Journal of neural engineering, 2018, 15(5): 056013.
-URL: https://arxiv.org/abs/1611.08024
-Related Project: https://github.com/braindecode/braindecode/tree/master/braindecode
+[3] DGCNN: Song T, Zheng W, Song P, et al. EEG emotion recognition using dynamical graph convolutional neural networks[J]. IEEE Transactions on Affective Computing, 2018, 11(3): 532-541.
+    URL: https://ieeexplore.ieee.org/abstract/document/8320798
+    Related Project: https://github.com/xueyunlong12589/DGCNN
 
-# DGCNN
-Paper: Song T, Zheng W, Song P, et al. EEG emotion recognition using dynamical graph convolutional neural networks[J]. IEEE Transactions on Affective Computing, 2018, 11(3): 532-541.
-URL: https://ieeexplore.ieee.org/abstract/document/8320798
-Related Project: https://github.com/xueyunlong12589/DGCNN
+[4] Models implementation: TorchEEG
+    Related Project: https://github.com/torcheeg/torcheeg
 '''
 
 def get_model(model_name, data_x_shape, num_class, device, dropout=0.5, sampling_rate=128):
@@ -37,9 +29,6 @@ def get_model(model_name, data_x_shape, num_class, device, dropout=0.5, sampling
     elif model_name == 'TSC':
         model = TSCeption(num_electrodes=data_x_shape[2], num_classes=num_class, sampling_rate=sampling_rate, dropout=dropout)
         max_lr = 1e-3
-    elif model_name == 'EEGNet':
-        model = EEGNet(chunk_size=data_x_shape[3], num_electrodes=data_x_shape[2], num_classes=num_class, dropout=dropout)
-        max_lr = 1e-3
     elif model_name == 'DGCNN':
         model = DGCNN(in_channels=data_x_shape[2], num_electrodes=data_x_shape[1], num_classes=num_class)
         max_lr = 1e-3
@@ -48,34 +37,7 @@ def get_model(model_name, data_x_shape, num_class, device, dropout=0.5, sampling
         exit(1)
     return model.to(device), max_lr
 
-
-# ------------------------------------------LSTM----------------------------------------------
-class LSTM(nn.Module):
-    def __init__(self, num_electrodes: int = 32, num_classes: int = 2,
-                 hid_dim = 128, n_layers = 2, dropout = 0.3, bidirectional = False):
-        super(LSTM, self).__init__()
-
-        self.num_electrodes = num_electrodes
-        self.num_classes = num_classes
-        self.hid_dim = hid_dim
-        self.n_layers = n_layers
-        self.dropout = dropout
-        self.bidirectional = bidirectional
-
-        self.lstm = nn.LSTM(input_size = num_electrodes, hidden_size = hid_dim, num_layers = n_layers,
-                            dropout = dropout, bias = True, # default
-                            batch_first = True, bidirectional = bidirectional)
-
-        self.fc = nn.Linear(hid_dim, num_classes)
-        
-    def forward(self, x):
-        out, (h, c) = self.lstm(x, None)   
-        out = F.dropout(out, 0.3)
-        x = self.fc(out[:, -1, :])  # 마지막 time step만 가지고 
-        return x
-
-# ------------------------------------------CCNN-----------------------------------------------
-class CCNN(nn.Module): # input_size: batch x freq x 9 x 9
+class CCNN(nn.Module):
     def __init__(self, in_channels = 4, grid_size = (9, 9), num_classes = 2, dropout = 0.5):
         super().__init__()
         self.in_channels = in_channels
@@ -90,8 +52,8 @@ class CCNN(nn.Module): # input_size: batch x freq x 9 x 9
 
         self.lin1 = nn.Sequential(
             nn.Linear(self.grid_size[0] * self.grid_size[1] * 64, 1024),
-            nn.SELU(), #)  Not mentioned in paper
-            nn.Dropout(self.dropout)) # error Dropout2d
+            nn.SELU(),
+            nn.Dropout(self.dropout))
         self.lin2 = nn.Linear(1024, self.num_classes)
 
     def forward(self, x):
@@ -113,9 +75,7 @@ class CCNN(nn.Module): # input_size: batch x freq x 9 x 9
         xs = [x1.cpu(),x2.cpu(),x3.cpu(),x4.cpu()]
         return xs
 
-
-# -----------------------------------------TSCeption--------------------------------------------
-class TSCeption(nn.Module): # input_size: batch x 1 x EEG channel x datapoint
+class TSCeption(nn.Module):
     def __init__(self, num_electrodes = 28, num_T = 15, num_S = 15, in_channels = 1, hid_channels = 32,
                  num_classes = 2, sampling_rate = 128, dropout = 0.5):
         super().__init__()
@@ -130,8 +90,7 @@ class TSCeption(nn.Module): # input_size: batch x 1 x EEG channel x datapoint
 
         self.inception_window = [0.5, 0.25, 0.125]
         self.pool = 8
-        # by setting the convolutional kernel being (1,lenght) and the strids being 1 we can use conv2d to
-        # achieve the 1d convolution operation
+        
         self.Tception1 = self.conv_block(in_channels, num_T, (1, int(self.inception_window[0] * sampling_rate)), 1, self.pool)
         self.Tception2 = self.conv_block(in_channels, num_T, (1, int(self.inception_window[1] * sampling_rate)), 1, self.pool)
         self.Tception3 = self.conv_block(in_channels, num_T, (1, int(self.inception_window[2] * sampling_rate)), 1, self.pool)
@@ -170,68 +129,6 @@ class TSCeption(nn.Module): # input_size: batch x 1 x EEG channel x datapoint
         out = torch.squeeze(torch.mean(out, dim=-1), dim=-1)
         out = self.fc(out)
         return out
-
-# ------------------------------------------EEGNet----------------------------------------------
-class Conv2dWithConstraint(nn.Conv2d):
-    def __init__(self, *args, max_norm: int = 1, **kwargs):
-        self.max_norm = max_norm
-        super(Conv2dWithConstraint, self).__init__(*args, **kwargs)
-
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        self.weight.data = torch.renorm(self.weight.data, p=2, dim=0, maxnorm=self.max_norm)
-        return super(Conv2dWithConstraint, self).forward(x)
-
-class EEGNet(nn.Module): # input_size: batch x 1 x EEG channel x datapoint
-    def __init__(self, chunk_size: int = 151, num_electrodes: int = 60, num_classes: int = 2,
-                 F1: int = 8, F2: int = 16, D: int = 2,
-                 kernel_1: int = 64, kernel_2: int = 16, dropout: float = 0.5):
-        super(EEGNet, self).__init__()
-        self.chunk_size = chunk_size
-        self.num_electrodes = num_electrodes
-        self.num_classes = num_classes
-        self.F1 = F1;   self.F2 = F2;   self.D = D
-        self.kernel_1 = kernel_1;   self.kernel_2 = kernel_2
-        self.dropout = dropout
-
-        self.block1 = nn.Sequential(
-            nn.Conv2d(1, self.F1, (1, self.kernel_1), stride=1, padding=(0, self.kernel_1 // 2), bias=False),
-            nn.BatchNorm2d(self.F1, momentum=0.01, affine=True, eps=1e-3),
-            Conv2dWithConstraint(self.F1, self.F1 * self.D, (self.num_electrodes, 1),
-                                 max_norm=1, stride=1, padding=(0, 0), groups=self.F1, bias=False),
-            nn.BatchNorm2d(self.F1 * self.D, momentum=0.01, affine=True, eps=1e-3),
-            nn.ELU(),
-            nn.AvgPool2d((1, 4), stride=4),
-            nn.Dropout(p=dropout))
-
-        self.block2 = nn.Sequential(
-            nn.Conv2d(self.F1*self.D, self.F1*self.D, (1, self.kernel_2),
-                      stride=1, padding=(0, self.kernel_2 // 2), bias=False, groups=self.F1 * self.D),
-            nn.Conv2d(self.F1*self.D, self.F2, 1, padding=(0, 0), groups=1, bias=False, stride=1),
-            nn.BatchNorm2d(self.F2, momentum=0.01, affine=True, eps=1e-3),
-            nn.ELU(),
-            nn.AvgPool2d((1, 8), stride=8),
-            nn.Dropout(p=dropout))
-
-        self.lin = nn.Linear(self.F2 * self.feature_dim, num_classes, bias=False)
-
-    @property   # 메서드를 속성처럼 접근 가능하게 해줌
-    def feature_dim(self):
-        with torch.no_grad():
-            mock_eeg = torch.zeros(1, 1, self.num_electrodes, self.chunk_size)
-
-            mock_eeg = self.block1(mock_eeg)
-            mock_eeg = self.block2(mock_eeg)
-
-        return mock_eeg.shape[3]
-
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        x = self.block1(x)
-        x = self.block2(x)
-        x = x.flatten(start_dim=1)
-        x = self.lin(x)
-        return x
-
-# ------------------------------------------DGCNN----------------------------------------------
 class GraphConvolution(nn.Module):
     def __init__(self, in_channels: int, out_channels: int, bias: bool=False):
         super(GraphConvolution, self).__init__()
@@ -307,7 +204,7 @@ class Chebynet(nn.Module):
         result = F.relu(result)
         return result
 
-class DGCNN(nn.Module): # input_size: batch x EEG channel x freq
+class DGCNN(nn.Module):
     def __init__(self, in_channels: int = 5, num_electrodes: int = 14, num_layers: int = 2,
                  hid_channels: int = 32, num_classes: int = 2):
         super(DGCNN, self).__init__()
@@ -332,5 +229,3 @@ class DGCNN(nn.Module): # input_size: batch x EEG channel x freq
         result = F.relu(self.fc1(result))
         result = self.fc2(result)
         return result
-
-# ---------------------------------------------------------------------------------------

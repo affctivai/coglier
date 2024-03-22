@@ -1,5 +1,18 @@
 from torch.optim.lr_scheduler import _LRScheduler
 import math
+
+'''
+References
+
+[1] CosineScheduler implementation: Paszke, A., Gross, S., et al. PyTorch: An Imperative Style, High-Performance Deep Learning Library [Conference paper]. Advances in Neural Information Processing Systems 32, 8024–8035.(2019). 
+    URL: http://papers.neurips.cc/paper/9015-pytorch-an-imperative-style-high-performance-deep-learning-library.pdf
+    Related Project: https://github.com/pytorch/pytorch
+
+[2] Customizing CosineScheduler(written Korean)
+    URL: https://gaussian37.github.io/dl-pytorch-lr_scheduler/#cosineannealingwarmrestarts-1
+'''
+
+
 class CosineAnnealingWarmUpRestarts(_LRScheduler):
     def __init__(self, optimizer, T_0, T_mult=1, eta_max=0.1, T_up=0, gamma=1., last_epoch=-1):
         if T_0 <= 0 or not isinstance(T_0, int):

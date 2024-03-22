@@ -7,10 +7,9 @@ from sklearn.model_selection import train_test_split
 from utils.constant import *
 from utils.tools import getFromnpz_, seed_everything
 
-# -----------------------------------------Setting---------------------------------------------------
 parser = argparse.ArgumentParser()
-parser.add_argument("--dataset", dest="dataset", action="store", default="GAMEEMO", help='GAMEEMO, SEED, SEED_IV, DEAP')
-parser.add_argument("--label", dest="label", action="store", default="v", help='v, a :GAMEEMO/DEAP')
+parser.add_argument("--dataset", dest="dataset", action="store", default="GAMEEMO", help='GAMEEMO, SEED, SEED_IV')
+parser.add_argument("--label", dest="label", action="store", default="v", help='v, a :GAMEEMO')
 args = parser.parse_args()
 
 DATASET_NAME = args.dataset
@@ -25,9 +24,6 @@ elif DATASET_NAME == 'SEED':
 elif DATASET_NAME == 'SEED_IV':
     DATAS = join(os.getcwd(),"datasets", "SEED_IV", "npz")
     SUB_NUM = SEED_IV_SUBNUM
-elif DATASET_NAME == 'DEAP':
-    DATAS = join(os.getcwd(),"datasets", "DEAP", "npz")
-    SUB_NUM = DEAP_SUBNUM
 else:
     print("Unknown Dataset")
     exit(1)
@@ -44,19 +40,16 @@ def make_dataset(src, sublists, label, save_dir):
     for sub in sublists:
         datas, targets = getFromnpz_(src, sub, cla=label)
         labels, countsl = np.unique(targets[:, 0], return_counts=True)
-        print(f'label {label} count {labels} \t {countsl}')  # labels
+        print(f'label {label} count {labels} \t {countsl}')
 
-        # Make Dataset  ## train 90 : test 10
         X_train, X_test, Y_train, Y_test = train_test_split(datas, targets, test_size=0.1, stratify=targets, random_state=random_seed)
         print(f'num of train: {len(Y_train)} \t num of test: {len(Y_test)}\n')
 
-        # save train, test
         np.savez(join(train_dir, f'{label}_{sub}'), X=X_train, Y=Y_train)
         np.savez(join(test_dir, f'{label}_{sub}'), X=X_test, Y=Y_test)
     print(f'saved in {save_dir}')
 
-# -----------------------------------------main---------------------------------------------------
-SUBLIST = [str(i).zfill(2) for i in range(1, SUB_NUM + 1)] # '01', '02', '03', ...
+SUBLIST = [str(i).zfill(2) for i in range(1, SUB_NUM + 1)]
 
 make_dataset(join(DATAS,'Preprocessed', 'seg'),   SUBLIST,LABEL, join(DATAS, 'Projects', 'raw'))
 make_dataset(join(DATAS,'Preprocessed','seg_DE'), SUBLIST,LABEL, join(DATAS, 'Projects', 'DE'))

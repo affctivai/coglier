@@ -9,13 +9,13 @@ import argparse
 from utils.constant import *
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--dataset", dest="dataset", action="store", default="GAMEEMO", help='GAMEEMO, SEED, SEED_IV, DEAP')
-parser.add_argument("--label", type=str, default='v', help='v, a :GAMEEMO/DEAP')
-parser.add_argument("--model", dest="model", action="store", default="CCNN", help='CCNN, TSC, EEGNet, DGCNN')
+parser.add_argument("--dataset", dest="dataset", action="store", default="GAMEEMO", help='GAMEEMO, SEED, SEED_IV')
+parser.add_argument("--label", type=str, default='v', help='v, a :GAMEEMO')
+parser.add_argument("--model", dest="model", action="store", default="CCNN", help='CCNN, TSC, DGCNN')
 parser.add_argument("--feature", dest="feature", action="store", default="DE", help='DE, PSD, raw')
 parser.add_argument('--batch', type=int, default = 64)
 parser.add_argument('--epoch', type=int, default = 3)
-parser.add_argument('--project_name', type=str, default = 'Subdepend')  # save result
+parser.add_argument('--project_name', type=str, default = 'Subdepend')
 parser.add_argument("--test", dest="test", action="store_true")
 args = parser.parse_args()
 
@@ -35,7 +35,7 @@ if LABEL == 'a':    train_name = 'arousal'
 elif LABEL == 'v':  train_name = 'valence'
 else:               train_name = 'emotion'
 
-SUBLIST = [str(i).zfill(2) for i in range(1, SUB_NUM+1)] # '01', '02', '03', ...
+SUBLIST = [str(i).zfill(2) for i in range(1, SUB_NUM+1)]
 
 def run(sublist):
     for sub in sublist:
@@ -46,7 +46,7 @@ def run(sublist):
 
 def save_results(sublist):
     test_results = dict()
-    if MODEL_NAME == 'EEGNet' or MODEL_NAME == 'TSC': MODEL_FEATURE = MODEL_NAME
+    if MODEL_NAME == 'TSC': MODEL_FEATURE = MODEL_NAME
     else: MODEL_FEATURE = '_'.join([MODEL_NAME, FEATURE])
     project_path = train_path = Path(join(os.getcwd(), 'results', DATASET_NAME, MODEL_FEATURE, PROJECT))
     for sub in sublist:

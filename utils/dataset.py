@@ -14,10 +14,10 @@ def load_list_subjects(src, mode, sublist, label):
     datas = np.array(datas); targets = np.array(targets)
     return datas, targets
 
-def load_list_subjects_rp(src, mode, sublist, label):
+def load_list_subjects_rp(src, mode, sublist, label, z=2.5):
     datas, targets = [], []
     for subnum in sublist:
-        subnum += '_rp.npz'
+        subnum += f'_rp_{int(z*100)}.npz'
         data = np.load(join(src, mode, f'{label}_{subnum}'), allow_pickle=True)
         datas.extend(data['X'])
         targets.extend(data['Y'])

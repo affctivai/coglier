@@ -3,8 +3,15 @@ from scipy.signal import butter, lfilter
 from scipy.signal.windows import hann
 from sklearn.preprocessing import StandardScaler, RobustScaler
 
-# EEG feature extraction--------------------------------------------------------------------------
-# BandDifferentialEntropy, BandPowerSpectralDensity
+'''
+References
+
+[1] PSD, DE: Alarc ̃ao, S. M., Fonseca, M. J.:Emo-tions recognition using eeg signals: A survey. IEEE Transactions on Affective Computing 2019: 10(3):374–393
+
+[2] Transform implementation: TorchEEG
+    Related Project: https://github.com/torcheeg/torcheeg
+'''
+
 def butter_bandpass(low_cut, high_cut, fs, order=5):
     nyq = 0.5 * fs
     low = low_cut / nyq
@@ -28,8 +35,8 @@ class BandDifferentialEntropy:
         for low, high in self.band_dict.values():
             c_list = []
             for c in eeg:
-                b, a = butter_bandpass(low, high, fs=self.sampling_rate, order=self.order) # 필터만들기
-                c_list.append(self.opt(lfilter(b, a, c)))  # 원래 신호 c 에 필터링하기
+                b, a = butter_bandpass(low, high, fs=self.sampling_rate, order=self.order)
+                c_list.append(self.opt(lfilter(b, a, c)))
             c_list = np.array(c_list)
             band_list.append(c_list)
         return np.stack(band_list, axis=-1)
@@ -37,7 +44,7 @@ class BandDifferentialEntropy:
     def opt(self, eeg):
         return 1 / 2 * np.log2(2 * np.pi * np.e * np.std(eeg))
 
-class BandPowerSpectralDensity: # 양의 실수
+class BandPowerSpectralDensity:
     def __init__(self, sampling_rate = 128,
                  fft_n = None,
                  band_dict = {"theta": [4, 8],
@@ -60,13 +67,11 @@ class BandPowerSpectralDensity: # 양의 실수
         for _, band in enumerate(self.band_dict.values()):
             start_index = int(np.floor(band[0] / self.sampling_rate * self.fft_n))
             end_index = int(np.floor(band[1] / self.sampling_rate * self.fft_n))
-            band_ave_psd = np.mean(energy_graph[:, start_index -1 : end_index]**2, axis=1) # 주파수내 평균전력
+            band_ave_psd = np.mean(energy_graph[:, start_index -1 : end_index]**2, axis=1)
             band_list.append(band_ave_psd)
 
         return np.stack(band_list, axis=-1)
 
-
-# Online Transform --------------------------------------------------------------------------
 def make_grid(datas, channel, location):
     CHANNEL_LOCATION_DICT = format_channel_location_dict(channel, location)
     togrid = ToGrid(CHANNEL_LOCATION_DICT)
@@ -94,28 +99,21 @@ class ToGrid:
         self.height = max(loc_y_list) + 1
 
     def apply(self, eeg):
-        # num_electrodes x timestep
         outputs = np.zeros([self.height, self.width, eeg.shape[-1]])
-        # 9 x 9 x timestep
         for i, (loc_y, loc_x) in enumerate(self.channel_location_dict.values()):
             outputs[loc_y][loc_x] = eeg[i]
 
         outputs = outputs.transpose(2, 0, 1)
-        # timestep x 9 x 9
         return outputs
 
     def reverse(self, eeg):
-        # timestep x 9 x 9
         eeg = eeg.transpose(1, 2, 0)
-        # 9 x 9 x timestep
         num_electrodes = len(self.channel_location_dict)
         outputs = np.zeros([num_electrodes, eeg.shape[2]])
         for i, (x, y) in enumerate(self.channel_location_dict.values()):
             outputs[i] = eeg[x][y]
-        # num_electrodes x timestep
         return outputs
 
-# scaling
 def scaling(datas, scaler_name = None):
     if scaler_name == None: return datas
     flattend = datas.reshape(-1, 1)
@@ -138,16 +136,12 @@ def scaling(datas, scaler_name = None):
     scaled_datas = scaled_datas.reshape(datas.shape)
     return scaled_datas
 
-# deshape
 def deshape(datas, shape_name = None, chls=None, location=None):
     if shape_name == None: return datas
 
-    # for CCNN model (samples, channels, 4 bands) -> (samples, 4 bands, 9, 9)
     if shape_name == 'grid': 
         datas = make_grid(datas, chls, location)
         print(f'grid (samples, 4freq, 9x9): {datas.shape}')
-
-    # for TSCeption, EEGNet (samples, channels, window) -> (samples, 1, channels, window)
     if shape_name == 'expand': 
         datas = np.expand_dims(datas, axis=1)
         print(f'expand (samples, 1, channels, window): {datas.shape}')
