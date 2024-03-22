@@ -1,6 +1,0 @@
-*.npz
-**/results
-**/__pycache__
-.venv
-**.out
-experiment/
