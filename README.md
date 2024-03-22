@@ -1,4 +1,4 @@
-# Detecting Concept Shifts under Different Levels of Self-awareness on Labeling
+# Detecting Concept Shifts under Different Levels of Self-awareness on Emotion Labeling
 ![Concept Shift under Different Levels of Self-awareness on Emotion Labeling](src/concept_shift.png)
 
 ## Dataset 
