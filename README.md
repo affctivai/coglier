@@ -1,5 +1,5 @@
 # Detecting Concept Shifts under Different Levels of Self-awareness on Labeling
-![Concept Shift under Different Levels of Self-awareness on Labeling](src/concept_shift.png)
+![Concept Shift under Different Levels of Self-awareness on Emotion Labeling](src/concept_shift.png)
 
 ## Dataset 
 - **SEED** : 3 class *(netral, positive, negative)*
