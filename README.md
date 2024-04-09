@@ -84,7 +84,17 @@ In **2.0 Base_Remove.py**, `threshold==0` is equivalent to Baseline.
 ## Results
 ![Classification Accuracy and AUROC of Ours and Baseline](src/results.png)
 
+
 ---
 
 ## LICENSE
 This repository has a MIT license, as found in the [LICENSE](./LICENSE) file.
+
+
+---
+
+## Contact
+
+If you have any questions, please email 13eye42@inha.edu.
+
+
