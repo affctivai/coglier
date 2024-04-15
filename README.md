@@ -2,7 +2,7 @@
 ![Concept Shift under Different Levels of Self-awareness on Emotion Labeling](src/concept_shift.png)
 
 ## Dataset 
-- **SEED** : 3 class *(netral, positive, negative)*
+- **SEED** : 3 class *(neutral, positive, negative)*
 - **SEED-IV** : 4 class *(happiness, sadness, fear, neutral)*
 - **GAMEEMO** : 9 class  *(valence, arousal)*
 
