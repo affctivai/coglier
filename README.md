@@ -1,4 +1,6 @@
 # Detecting Concept Shifts under Different Levels of Self-awareness on Emotion Labeling
+Code for the [ICPR 2024](https://icpr2024.org/) paper [Detecting Concept Shifts under Different Levels of Self-awareness on Emotion Labeling](https://drive.google.com/file/d/1-leivUFOWcyn9KRUQ2kc9PlJu9dazom2)
+
 ![Concept Shift under Different Levels of Self-awareness on Emotion Labeling](src/concept_shift.png)
 
 ## Dataset 
@@ -83,6 +85,18 @@ In **2.0 Base_Remove.py**, `threshold==0` is equivalent to Baseline.
 ![Classification Accuracy and AUROC of Ours and Baseline](src/results.png)
 
 ---
+
+### Citation
+If this code is useful for your research, please cite us at:
+```
+@inproceedings{choi2024CogLier,
+  title={Detecting Concept Shifts under Different Levels of Self-awareness on Emotion Labeling},
+  author={Choi, Hyoseon and Choi, Dahoon and Kaongoen, Netiwit and Kim, Byung Hyung},
+  conference={International Conference on Pattern Recognition (ICPR)},
+  pages={276--291},
+  year={2024}
+}
+```
 
 ## LICENSE
 This repository has a MIT license, as found in the [LICENSE](./LICENSE) file.
